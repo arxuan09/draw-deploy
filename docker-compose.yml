@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_ROOT_PASSWORD: drawnext_root_pwd
+      MYSQL_DATABASE: drawnext
+      MYSQL_USER: drawnext
+      MYSQL_PASSWORD: drawnext_pwd
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - drawnext-net
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdrawnext_root_pwd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - drawnext-net
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  drawnext:
+    image: arxuan09/drawnext:latest
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      APP_ENV: production
+      DATABASE_URL: mysql://drawnext:drawnext_pwd@mysql:3306/drawnext
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?}
+      JWT_EXPIRES_DAYS: ${JWT_EXPIRES_DAYS:-30}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+    ports:
+      - "${APP_PORT:-16789}:3000"
+    networks:
+      - drawnext-net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+networks:
+  drawnext-net:
+    driver: bridge
