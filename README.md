@@ -1,8 +1,5 @@
 # drawnext · 部署指南
 
-商业 AI 绘图 / 设计系统的自托管部署：无限画布、多模型出图、积分计费、后台管理开箱即用。
-一条命令即可上线。
-
 ## 准备
 
 - 一台 Linux 服务器，已装 **Docker**（含 Docker Compose v2，`docker compose version` 可用）。
@@ -125,10 +122,3 @@ MySQL / Redis 仅容器内网可达，不要对公网开放。
 docker compose logs -f drawnext     # 应用日志
 docker compose ps                   # 容器状态
 ```
-
-## 上线自检
-
-- [ ] `JWT_SECRET` / `SETTINGS_ENCRYPTION_KEY` 已设置（后者备份好、上线后不再改）
-- [ ] 默认管理员密码已改，账号（邮箱 / 用户名）也在「用户管理」改成自己的
-- [ ] 已配对象存储与 `site_public_url`
-- [ ] 走 HTTPS，未直接暴露明文端口；已配 `mysqldump` 定时备份
