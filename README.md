@@ -1,64 +1,65 @@
-# drawnext · 部署指南
+# drawnext 部署指南
 
-## 准备
+## 环境准备
 
-- 一台 Linux 服务器，已装 **Docker**（含 Docker Compose v2，`docker compose version` 可用）。
-- **软件授权码 `LICENSE_KEY`**：向供应商获取。没有它服务能启动但所有功能被拦截。
-- **对象存储 Bucket**（S3 / 阿里云 OSS 等）：生成的图片必须存这里，不配无法出图。
-- **至少一个模型厂商 API Key**（OpenAI / Gemini / 通义万相 DashScope）。
+部署前需要准备以下内容：
 
-## 一键部署（推荐）
+- 一台 Linux 服务器，已安装 Docker（含 Compose v2，可用 `docker compose version` 验证）。
+- 授权码 `LICENSE_KEY`，由供应商提供。未填写时服务仍可启动，但所有接口都会被拦截。
+- 一个对象存储 Bucket（S3、阿里云 OSS 等均可），用于存放生成的图片，未配置则无法出图。
+- 至少一个模型厂商的 API Key，OpenAI、Gemini、通义万相 DashScope 任选其一。
+
+## 一键部署
+
+推荐使用部署脚本：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arxuan09/draw-deploy/main/deploy.sh -o deploy.sh
-bash deploy.sh          # 默认部署到 ./drawnext；也可 bash deploy.sh 自定义目录名
+bash deploy.sh
 ```
 
-脚本会：创建部署目录 → 下载配置 → **自动生成密钥** → **提示输入授权码** → 拉镜像启动。
 完成后：
 
-- 访问 `http://<服务器IP>:16789`；
-- 首个管理员见启动日志（默认 `admin@example.com` / `Admin123456!`）。**登录后立即改密码，并到后台「用户管理」把管理员账号（邮箱 / 用户名）也改成你自己的**；
-- 进入后台「系统设置」配置**对象存储**与 **AI 供应商 / 模型**后即可出图。
+- 浏览器访问 `http://<服务器IP>:16789`。
+- 首个管理员账号见启动日志，默认为 `admin@example.com` / `Admin123456!`。登录后请立即修改密码，并到后台「用户管理」将该账号的邮箱与用户名一并改为自己的，不建议沿用默认值。
+- 进入「系统设置」，配置对象存储与 AI 供应商/模型后即可出图。
 
-> 目标目录已存在时脚本会**拒绝执行**（保护既有 `.env` 密钥与 `./data` 数据）。要全新部署请换目录名或先移走旧目录。
+若目标目录已存在，脚本会拒绝执行，以免覆盖其中已有的 `.env` 密钥和 `./data` 数据。需要全新部署时，请更换目录名或先移走原目录。
 
 ## 手动部署
 
 ```bash
 git clone https://github.com/arxuan09/draw-deploy.git drawnext && cd drawnext
 cp .env.example .env
-# 编辑 .env：填好 JWT_SECRET、SETTINGS_ENCRYPTION_KEY 两个密钥和 LICENSE_KEY 授权码
+# 编辑 .env，填入 JWT_SECRET、SETTINGS_ENCRYPTION_KEY 两个密钥与 LICENSE_KEY 授权码
 docker compose up -d
 ```
 
-## 配置（`.env`）
+## 配置 .env
 
-数据库 / 缓存（MySQL、Redis）已写死在 `docker-compose.yml`，无需配置。`.env` 只放这几项：
+`.env` 仅涉及以下几项：
 
 | 变量 | 说明 | 必填 |
 |---|---|---|
-| `JWT_SECRET` | 登录态签名密钥 | ✅ |
-| `SETTINGS_ENCRYPTION_KEY` | 后台密钥（OSS/AI/支付/邮件）落库加密密钥，32 字节 base64/hex。**设置后切勿更改**，否则已存配置无法解密 | ✅ |
-| `LICENSE_KEY` | 软件授权码，向供应商获取 | ✅ |
-| `APP_PORT` | 对外端口，默认 `16789` | 可选 |
-| `JWT_EXPIRES_DAYS` | 登录态有效期（天），默认 `30` | 可选 |
+| `JWT_SECRET` | 登录态签名密钥 | 是 |
+| `SETTINGS_ENCRYPTION_KEY` | 后台配置（OSS、AI、支付、邮件）落库时的加密密钥，32 字节 base64/hex。设定后请勿更改，否则已存配置将无法解密 | 是 |
+| `LICENSE_KEY` | 授权码，由供应商提供 | 是 |
+| `APP_PORT` | 对外端口，默认 16789 | 否 |
+| `JWT_EXPIRES_DAYS` | 登录态有效期（天），默认 30 | 否 |
 
-> 两个密钥用 `deploy.sh` 会自动生成。没填这两项服务会直接启动失败并给出中文提示。
-> 站点信息、对象存储、邮件、支付、AI 等业务配置都在**后台「系统设置」**里填，不进 `.env`。
+前两个密钥在使用 `deploy.sh` 时会自动生成，仅手动部署需要自行填写；两项为空时服务无法启动，并会给出提示。
 
-## 上线后必做（后台 → 系统设置）
+## 部署后的必要配置（后台 → 系统设置）
 
-| 分页 | 配置 | 说明 |
-|---|---|---|
-| **存储** | 对象存储 Endpoint / Bucket / AccessKey + `oss_public_base_url` | 🔴 不配无法出图 |
-| **通用** | `site_public_url`（站点对外地址） | 🔴 邮件 / 支付链接依赖它 |
-| **AI** | 供应商（Base URL + API Key，均必填）+ 模型 | 见下 |
-| 邮件 / 支付 / 访问 / 内容安全 | SMTP、易支付、注册开关、敏感词 | 按需 |
+以下几项直接影响出图与邮件、支付，建议优先完成：
 
-**配置模型**：先在「供应商管理」填 Base URL + API Key（路径自动补全），再在「模型管理」选
-供应商 + 端点并设置计费 / 质量 / 尺寸。各模型「质量 / 分辨率 / 选项栏怎么填」的速查表见
-**[`model-config-reference.md`](./model-config-reference.md)**。
+- 「存储」：对象存储的 Endpoint、Bucket、AccessKey 及 `oss_public_base_url`。未配置将无法出图。
+- 「通用」：`site_public_url`，即站点对外地址，邮件链接与支付回调均依赖该项。
+- 「AI」：先在供应商中填写 Base URL 与 API Key（两者均为必填），再配置模型。
+
+邮件、支付、注册开关、敏感词等其余配置可按需补充。
+
+配置模型的流程为：在「供应商管理」中填写 Base URL 与 API Key，随后在「模型管理」中选择供应商与端点，并设置计费、质量与尺寸。各模型的质量、分辨率、选项栏具体如何填写，可参见速查表 [`model-config-reference.md`](./model-config-reference.md)。
 
 ## 升级
 
@@ -66,14 +67,13 @@ docker compose up -d
 cd 你的部署目录 && ./update.sh
 ```
 
-只更新 `drawnext` 容器（数据库 / 缓存不动）；启动时自动增量建表。数据在 `./data`，升级不丢。
+该命令仅更新 drawnext 容器，数据库与缓存保持不变，新版本启动时会自动增量建表。数据位于 `./data`，升级不会丢失。
 
-需要重启服务用 `./restart.sh`（仅重启，不拉新镜像；改了 `.env` 请用 `./update.sh` 让新配置生效）。
+如只需重启而不拉取新镜像，使用 `./restart.sh`。注意修改 `.env` 后须执行 `./update.sh` 才能使新配置生效，仅重启不行。
 
 ## 数据与备份
 
-数据 **bind 挂载在部署目录的 `./data`**（`mysql` / `redis`），容器重建 / 升级都不丢；生成的图在对象存储。
-**删除部署目录会一并删 `./data`**，请勿误删，并定期备份：
+数据库数据在部署目录的 `./data` 下，删除部署目录会一并丢失，请定期备份：
 
 ```bash
 docker compose exec mysql mysqldump -u root -pdrawnext_root_pwd drawnext > backup-$(date +%F).sql
@@ -81,42 +81,31 @@ docker compose exec mysql mysqldump -u root -pdrawnext_root_pwd drawnext > backu
 
 ## 更换服务器
 
-数据与密钥都在部署目录里（`.env` + `./data`），整目录搬走即可，无需重装：
+数据与密钥都在部署目录里（`.env` 与 `./data`），整目录迁移即可，无需重装。迁移前先联系供应商更新授权绑定的 IP——授权可能绑定服务器出口 IP，不更新会在新机被拦。
 
-1. **先找管理员 / 供应商更换授权绑定的 IP**：授权可能绑定服务器出口 IP，先把新服务器的公网出口 IP 告知对方更新授权，否则到新机会因 IP 不匹配被拦截。
-2. **停服并打包整个部署目录**（含 `.env` 与 `./data`；停服可保证数据库文件一致）：
+```bash
+# 旧服务器：停服并打包整个目录
+docker compose stop
+cd .. && tar czf drawnext.tar.gz drawnext
 
-   ```bash
-   docker compose stop
-   cd .. && tar czf drawnext.tar.gz drawnext
-   ```
+# 传到新服务器解压后，在目录内启动
+docker compose pull && docker compose up -d
+```
 
-3. **上传到新服务器并解压**（scp / rsync 等），进入该目录。
-4. **启动**：
-
-   ```bash
-   docker compose pull && docker compose up -d
-   ```
-
-5. 确认新机正常后，旧服务器可 `docker compose down` 下线。
-
-> 必须打包**整个目录**：`.env` 里的 `SETTINGS_ENCRYPTION_KEY` 随之搬走，后台已存配置才能继续解密；`./data` 里是数据库与缓存。
-
-## HTTPS
-
-生产环境用 Nginx / Caddy 反代到 `16789`，配好 HTTPS 与域名，并让域名与后台「通用 → `site_public_url`」一致。
-MySQL / Redis 仅容器内网可达，不要对公网开放。
+打包务必是整个目录：缺了 `.env` 里的 `SETTINGS_ENCRYPTION_KEY`，后台已存配置就解不开了。
 
 ## 常见问题
 
 | 现象 | 处理 |
 |---|---|
-| 前台「服务暂不可用」/ 接口报授权错误 | 授权无效 / 未填 / 过期或出口 IP 变了；查 `.env` 的 `LICENSE_KEY`，看日志 `docker compose logs drawnext \| grep 授权` |
-| 点生成报错 / 出不了图 | 后台「存储」未配对象存储，或模型 / 供应商 Base URL、API Key 未填 |
-| 启动失败提示要设置 `JWT_SECRET` / `SETTINGS_ENCRYPTION_KEY` | `.env` 这两项为空，用 `deploy.sh` 自动生成，或手动填入随机密钥 |
-| 注册收不到验证码 / 接口报 503 | 未配 SMTP 或 `site_public_url`（后台「邮件」「通用」） |
-| 端口被占用 | 改 `.env` 的 `APP_PORT` 后 `./update.sh` |
-| 删了部署目录后数据没了 | 数据在 `./data`，删目录即丢；请定期 `mysqldump` 备份 |
+| 前台显示「服务暂不可用」或接口报授权错误 | 授权未生效——未填写、已过期，或出口 IP 变更。检查 `.env` 的 `LICENSE_KEY`，并查看日志 `docker compose logs drawnext \| grep 授权` |
+| 点击生成报错、无法出图 | 多为后台「存储」未配置对象存储，或模型、供应商的 Base URL、API Key 未填全 |
+| 启动时提示需设置 `JWT_SECRET` / `SETTINGS_ENCRYPTION_KEY` | `.env` 中这两项为空。可用 `deploy.sh` 自动生成，或手动填入随机密钥 |
+| 注册收不到验证码、接口报 503 | 未配置 SMTP 或 `site_public_url`，请到后台「邮件」「通用」补全 |
+| 端口被占用 | 修改 `.env` 的 `APP_PORT` 后执行 `./update.sh` |
+| 删除部署目录后数据丢失 | 数据位于 `./data`，删目录即丢失，请定期使用 `mysqldump` 备份 |
+
+排查时常用以下命令：
 
 ```bash
 docker compose logs -f drawnext     # 应用日志
