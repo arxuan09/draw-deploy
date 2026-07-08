@@ -54,6 +54,8 @@ services:
       LICENSE_KEY: ${LICENSE_KEY:-}
     ports:
       - "${APP_PORT:-16789}:3000"
+    volumes:
+      - ./data/cache:/app/data/cache
     networks:
       - drawnext-net
     depends_on:
