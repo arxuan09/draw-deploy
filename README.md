@@ -59,6 +59,23 @@ docker compose up -d
 
 邮件、支付、注册开关、敏感词等其余配置可按需补充。
 
+### 上传大小上限与反向代理
+
+后台「存储 → 上传大小上限(MB)」（`asset_upload_max_mb`，默认 20）同时管着**素材库上传**和**画布 / 参考图上传**两条路径。
+
+⚠️ **改大它之前，先确认你的反向代理放得开。** 文件以 `multipart/form-data` 原样上传，请求体约等于文件本身（仅多出很小的分段开销），留一点余量即可：
+
+| 上传大小上限 | 反向代理至少需要 |
+|---|---|
+| 20 MB（默认） | `client_max_body_size 24m;` |
+| 50 MB | `client_max_body_size 56m;` |
+
+Nginx 的 `client_max_body_size` **默认只有 1M**，套在前面而不改这一项，用户传稍大的图就会收到 **413**（nginx 自己的 HTML 错误页，不是本系统的提示），后台把上限调多大都没用。
+
+> 2.21.0 之前上传走的是 base64，请求体会膨胀约 4/3 倍。若你当时按那个比例放宽过（例如为 20MB 上限配了 `32m`），现在**不需要调小**，留着只是余量更足。
+
+判断是谁拦的：**413 + HTML 错误页 = 反向代理**；**400 + `{"ok":false,"error":"Image is too large (max N MB)."}` = 本系统的上限**。
+
 配置模型的流程为：在「供应商管理」中填写 Base URL 与 API Key，随后在「模型管理」中选择供应商与端点，并设置计费、质量与尺寸。各模型的质量、分辨率、选项栏具体如何填写，可参见速查表 [`model-config-reference.md`](./model-config-reference.md)。
 
 ## 升级
@@ -102,6 +119,8 @@ docker compose pull && docker compose up -d
 | 点击生成报错、无法出图 | 多为后台「存储」未配置对象存储，或模型、供应商的 Base URL、API Key 未填全 |
 | 启动时提示需设置 `JWT_SECRET` / `SETTINGS_ENCRYPTION_KEY` | `.env` 中这两项为空。可用 `deploy.sh` 自动生成，或手动填入随机密钥 |
 | 注册收不到验证码、接口报 503 | 未配置 SMTP 或 `site_public_url`，请到后台「邮件」「通用」补全 |
+| 上传图片报 413 / nginx 错误页 | 反向代理的 `client_max_body_size` 太小（默认 1M）。图片经 base64 膨胀约 4/3 倍，需按「上传大小上限与反向代理」一节放开 |
+| 上传图片提示「Image is too large」 | 本系统的上限，到后台「存储 → 上传大小上限(MB)」调整 |
 | 端口被占用 | 修改 `.env` 的 `APP_PORT` 后执行 `./update.sh` |
 | 删除部署目录后数据丢失 | 数据位于 `./data`，删目录即丢失，请定期使用 `mysqldump` 备份 |
 
