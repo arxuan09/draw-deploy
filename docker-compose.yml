@@ -52,6 +52,9 @@ services:
       JWT_EXPIRES_DAYS: ${JWT_EXPIRES_DAYS:-30}
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?}
       LICENSE_KEY: ${LICENSE_KEY:-}
+      # 反向代理网段(见 .env.example);不透传的话 .env 里填了也不会生效,
+      # 所有按 IP 的限流会把全站算成同一个来源。
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
     ports:
       - "${APP_PORT:-16789}:3000"
     volumes:
