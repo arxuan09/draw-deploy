@@ -1,0 +1,62 @@
+{
+  "unixNow": 1757462400,
+  "cases": [
+    {
+      "name": "纯文生图 16:9",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": { "model": "gpt-image-1", "prompt": "a red apple", "size": "16:9", "aspectRatio": "16:9", "width": 0, "height": 0, "tier": "1K", "quality": "medium", "outputFormat": "png", "background": "", "refs": [], "duration": 0, "resolution": "", "refImages": [], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": {
+        "url": "https://relay.example.com/v1/images/generations",
+        "method": "POST",
+        "headers": { "Authorization": "Bearer k" },
+        "body": { "model": "gpt-image-1", "prompt": "a red apple", "size": "1536x1024", "n": 1, "response_format": "b64_json" }
+      }
+    },
+    {
+      "name": "带一张参考图，用占位符",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": { "model": "gpt-image-1", "prompt": "make it watercolor", "size": "1:1", "aspectRatio": "1:1", "width": 1024, "height": 1024, "tier": "1K", "quality": "medium", "outputFormat": "png", "background": "", "refs": [{ "ref": "ref_1", "url": "https://oss.example.com/a.png", "mime": "image/png", "size": 1000, "width": 512, "height": 512 }], "duration": 0, "resolution": "", "refImages": [], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": { "body": { "size": "1024x1024", "image": [{ "__ref": "ref_1", "encoding": "dataUrl" }] } }
+    },
+    {
+      "name": "提交缺 prompt",
+      "hook": "buildSubmitRequest",
+      "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "params": {}, "now": 1, "input": { "prompt": "", "refs": [] } }],
+      "expectedError": "提示词"
+    },
+    {
+      "name": "同步结果 b64_json",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "data": [{ "b64_json": "AAAA" }] } }],
+      "expected": { "immediate": { "status": "SUCCESS", "outputs": [{ "base64": "AAAA", "mime": "image/png" }] } }
+    },
+    {
+      "name": "同步结果 url",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "data": [{ "url": "https://cdn.example.com/x.png" }] } }],
+      "expected": { "immediate": { "status": "SUCCESS", "outputs": [{ "url": "https://cdn.example.com/x.png" }] } }
+    },
+    {
+      "name": "2xx 但没有数据",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "data": [] } }],
+      "expectedError": "没有返回图片"
+    }
+  ]
+}

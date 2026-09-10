@@ -1,0 +1,48 @@
+{
+  "unixNow": 1757462400,
+  "cases": [
+    {
+      "name": "首帧 + 1080p，分辨率拼进模型名",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": { "model": "grok-video", "prompt": "a cat runs", "size": "", "aspectRatio": "9:16", "width": 0, "height": 0, "tier": "1K", "quality": "", "outputFormat": "", "background": "", "refs": [], "duration": 8, "resolution": "1080p", "firstFrame": { "ref": "first_frame", "url": "https://oss.example.com/f.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 }, "refImages": [], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": {
+        "url": "https://relay.example.com/v1/videos",
+        "headers": { "Authorization": "Bearer k" },
+        "body": { "model": "grok-video-1080p", "prompt": "a cat runs", "duration": 8, "aspect_ratio": "9:16", "image": "https://oss.example.com/f.png" }
+      }
+    },
+    {
+      "name": "缺首帧",
+      "hook": "buildSubmitRequest",
+      "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "params": {}, "now": 1, "input": { "model": "m", "prompt": "x", "duration": 5, "resolution": "720p", "refs": [], "refImages": [], "refVideos": [], "refAudios": [] } }],
+      "expectedError": "首帧"
+    },
+    {
+      "name": "提交拿到 request_id",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "request_id": "req-1", "status": "pending" } }],
+      "expected": { "taskId": "req-1" }
+    },
+    {
+      "name": "轮询请求",
+      "hook": "buildQueryRequest",
+      "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "taskId": "req-1", "model": "m", "data": {}, "state": null }],
+      "expected": { "url": "https://relay.example.com/v1/videos/req-1", "method": "GET" }
+    },
+    { "name": "轮询：pending", "hook": "parseTaskResult", "args": [{}, { "status": "pending" }, { "status": 200, "headers": {} }], "expected": { "status": "QUEUED" } },
+    { "name": "轮询：running 带进度", "hook": "parseTaskResult", "args": [{}, { "status": "running", "progress": 40 }, { "status": 200, "headers": {} }], "expected": { "status": "IN_PROGRESS", "progress": 40 } },
+    { "name": "轮询：done", "hook": "parseTaskResult", "args": [{}, { "status": "done", "video": { "url": "https://cdn.example.com/x.mp4" } }, { "status": 200, "headers": {} }], "expected": { "status": "SUCCESS", "outputs": [{ "url": "https://cdn.example.com/x.mp4", "mime": "video/mp4" }] } },
+    { "name": "轮询：done 但没地址", "hook": "parseTaskResult", "args": [{}, { "status": "done", "video": {} }, { "status": 200, "headers": {} }], "expectedError": "没有视频地址" },
+    { "name": "轮询：failed", "hook": "parseTaskResult", "args": [{}, { "status": "failed", "error": { "message": "moderation" } }, { "status": 200, "headers": {} }], "expected": { "status": "FAILURE", "reason": "moderation" } },
+    { "name": "轮询：expired", "hook": "parseTaskResult", "args": [{}, { "status": "expired" }, { "status": 200, "headers": {} }], "expected": { "status": "FAILURE", "reason": "任务已过期" } },
+    { "name": "轮询：认不出", "hook": "parseTaskResult", "args": [{}, { "status": "weird" }, { "status": 200, "headers": {} }], "expected": { "status": "UNKNOWN", "reason": "unrecognized status: weird" } }
+  ]
+}

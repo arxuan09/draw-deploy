@@ -1,0 +1,63 @@
+{
+  "unixNow": 1757462400,
+  "cases": [
+    {
+      "name": "无参考图走 generations，自定义像素直接发",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": { "moderation": "low" },
+          "now": 1757462400,
+          "input": { "model": "gpt-image-2", "prompt": "a cat", "size": "1344x768", "aspectRatio": "16:9", "width": 1344, "height": 768, "tier": "1K", "quality": "high", "outputFormat": "png", "background": "", "refs": [], "duration": 0, "resolution": "", "refImages": [], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": {
+        "url": "https://relay.example.com/v1/images/generations",
+        "body": { "model": "gpt-image-2", "prompt": "a cat", "size": "1344x768", "quality": "high", "n": 1, "moderation": "low" }
+      }
+    },
+    {
+      "name": "两张参考图 + 遮罩走 multipart",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": {
+            "model": "gpt-image-2", "prompt": "replace the sky", "size": "1:1", "aspectRatio": "1:1", "width": 0, "height": 0, "tier": "1K", "quality": "medium", "outputFormat": "png", "background": "",
+            "refs": [
+              { "ref": "ref_1", "url": "https://oss.example.com/a.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 },
+              { "ref": "ref_2", "url": "https://oss.example.com/b.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 }
+            ],
+            "mask": { "ref": "mask", "url": "", "mime": "image/png", "size": 1, "width": 1, "height": 1 },
+            "duration": 0, "resolution": "", "refImages": [], "refVideos": [], "refAudios": []
+          }
+        }
+      ],
+      "expected": {
+        "url": "https://relay.example.com/v1/images/edits",
+        "bodyType": "multipart",
+        "parts": [
+          { "name": "model", "value": "gpt-image-2" },
+          { "name": "prompt", "value": "replace the sky" },
+          { "name": "size", "value": "1024x1024" },
+          { "name": "quality", "value": "medium" },
+          { "name": "n", "value": 1 },
+          { "name": "image[]", "ref": "ref_1" },
+          { "name": "image[]", "ref": "ref_2" },
+          { "name": "mask", "ref": "mask" }
+        ]
+      }
+    },
+    {
+      "name": "结果",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "data": [{ "b64_json": "QUJD" }] } }],
+      "expected": { "immediate": { "status": "SUCCESS", "outputs": [{ "base64": "QUJD", "mime": "image/png" }] } }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "unixNow": 1757462400,
+  "cases": [
+    {
+      "name": "一张参考图，inline_data 两个占位符",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://gemini.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": { "model": "gemini-image", "prompt": "make it night", "size": "16:9", "aspectRatio": "16:9", "width": 0, "height": 0, "tier": "2K", "quality": "2K", "outputFormat": "png", "background": "", "refs": [{ "ref": "ref_1", "url": "https://oss.example.com/a.jpg", "mime": "image/jpeg", "size": 1, "width": 1, "height": 1 }], "duration": 0, "resolution": "", "refImages": [], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": {
+        "url": "https://gemini.example.com/v1beta/models/gemini-image:generateContent",
+        "headers": { "x-goog-api-key": "k" },
+        "body": {
+          "contents": [{ "role": "user", "parts": [
+            { "text": "make it night" },
+            { "inline_data": { "mime_type": { "__ref": "ref_1", "encoding": "mime" }, "data": { "__ref": "ref_1", "encoding": "base64" } } }
+          ] }],
+          "generationConfig": { "imageConfig": { "imageSize": "2K", "aspectRatio": "16:9" } }
+        }
+      }
+    },
+    {
+      "name": "响应取图",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "candidates": [{ "content": { "parts": [{ "text": "here" }, { "inlineData": { "mimeType": "image/png", "data": "QUJD" } }] } }] } }],
+      "expected": { "immediate": { "status": "SUCCESS", "outputs": [{ "base64": "QUJD", "mime": "image/png" }] } }
+    },
+    {
+      "name": "被安全策略拦截",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "headers": {}, "body": { "promptFeedback": { "blockReason": "SAFETY" }, "candidates": [] } }],
+      "expectedError": "SAFETY"
+    }
+  ]
+}

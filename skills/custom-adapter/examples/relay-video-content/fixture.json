@@ -1,0 +1,66 @@
+{
+  "unixNow": 1757462400,
+  "cases": [
+    {
+      "name": "两图 + 一视频 + 一音频",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com",
+          "apiKey": "k",
+          "params": {},
+          "now": 1757462400,
+          "input": {
+            "model": "seedance-2.0", "prompt": "@图片1 和 @图片2 在 @视频1 的场景里跳舞", "size": "", "aspectRatio": "16:9", "width": 0, "height": 0, "tier": "1K", "quality": "", "outputFormat": "", "background": "", "refs": [],
+            "duration": 10, "resolution": "1080p",
+            "refImages": [
+              { "ref": "image_1", "url": "https://oss.example.com/a.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 },
+              { "ref": "image_2", "url": "https://oss.example.com/b.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 }
+            ],
+            "refVideos": [{ "ref": "video_1", "url": "https://oss.example.com/v.mp4", "mime": "video/mp4", "size": 1, "width": 0, "height": 0 }],
+            "refAudios": [{ "ref": "audio_1", "url": "https://oss.example.com/s.mp3", "mime": "audio/mpeg", "size": 1, "width": 0, "height": 0 }]
+          }
+        }
+      ],
+      "expected": {
+        "url": "https://relay.example.com/v1/videos",
+        "body": {
+          "model": "seedance-2.0-1080p", "duration": 10, "aspect_ratio": "16:9",
+          "image_urls": ["https://oss.example.com/a.png", "https://oss.example.com/b.png"],
+          "video_reference": [{ "url": "https://oss.example.com/v.mp4" }],
+          "audio_reference": [{ "url": "https://oss.example.com/s.mp3" }]
+        }
+      }
+    },
+    {
+      "name": "单图用 image_url，首尾帧",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "baseUrl": "https://relay.example.com", "apiKey": "k", "params": {}, "now": 1,
+          "input": { "model": "seedance-2.0", "prompt": "x", "size": "", "aspectRatio": "", "width": 0, "height": 0, "tier": "1K", "quality": "", "outputFormat": "", "background": "", "refs": [], "duration": 5, "resolution": "720p",
+            "firstFrame": { "ref": "first_frame", "url": "https://oss.example.com/f.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 },
+            "lastFrame": { "ref": "last_frame", "url": "https://oss.example.com/l.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 },
+            "refImages": [{ "ref": "image_1", "url": "https://oss.example.com/a.png", "mime": "image/png", "size": 1, "width": 1, "height": 1 }], "refVideos": [], "refAudios": [] }
+        }
+      ],
+      "expected": { "body": { "model": "seedance-2.0-720p", "aspect_ratio": "16:9", "start_image_url": "https://oss.example.com/f.png", "end_image_url": "https://oss.example.com/l.png", "image_url": "https://oss.example.com/a.png" } }
+    },
+    {
+      "name": "只有音频被预检拒绝",
+      "hook": "buildSubmitRequest",
+      "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "params": {}, "now": 1, "input": { "model": "m", "prompt": "x", "duration": 5, "resolution": "720p", "refs": [], "refImages": [], "refVideos": [], "refAudios": [{ "ref": "audio_1", "url": "https://oss.example.com/s.mp3", "mime": "audio/mpeg", "size": 1, "width": 0, "height": 0 }] } }],
+      "expectedError": "参考音频不能单独使用"
+    },
+    { "name": "提交拿到 id", "hook": "parseSubmitResponse", "args": [{}, { "statusCode": 200, "headers": {}, "body": { "id": "video_abc", "status": "queued" } }], "expected": { "taskId": "video_abc" } },
+    { "name": "提交 2xx 无 id", "hook": "parseSubmitResponse", "args": [{}, { "statusCode": 200, "headers": {}, "body": {} }], "expectedError": "任务 id" },
+    { "name": "轮询请求", "hook": "buildQueryRequest", "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "taskId": "video_abc", "model": "m", "data": {}, "state": null }], "expected": { "url": "https://relay.example.com/v1/videos/video_abc", "method": "GET", "headers": { "Authorization": "Bearer k" } } },
+    { "name": "轮询：queued", "hook": "parseTaskResult", "args": [{}, { "status": "queued" }, { "status": 200, "headers": {} }], "expected": { "status": "QUEUED" } },
+    { "name": "轮询：in_progress", "hook": "parseTaskResult", "args": [{}, { "status": "in_progress", "progress": 55 }, { "status": 200, "headers": {} }], "expected": { "status": "IN_PROGRESS", "progress": 55 } },
+    { "name": "轮询：completed → content 输出", "hook": "parseTaskResult", "args": [{}, { "status": "completed" }, { "status": 200, "headers": {} }], "expected": { "status": "SUCCESS", "outputs": [{ "content": true, "mime": "video/mp4" }] } },
+    { "name": "轮询：failed", "hook": "parseTaskResult", "args": [{}, { "status": "failed", "error": { "message": "content policy" } }, { "status": 200, "headers": {} }], "expected": { "status": "FAILURE", "reason": "content policy" } },
+    { "name": "轮询：cancelled", "hook": "parseTaskResult", "args": [{}, { "status": "cancelled" }, { "status": 200, "headers": {} }], "expected": { "status": "FAILURE" } },
+    { "name": "轮询：认不出", "hook": "parseTaskResult", "args": [{}, { "status": "processing" }, { "status": 200, "headers": {} }], "expected": { "status": "UNKNOWN", "reason": "unrecognized status: processing" } },
+    { "name": "带鉴权头的下载请求", "hook": "buildContentRequest", "args": [{ "baseUrl": "https://relay.example.com", "apiKey": "k", "taskId": "video_abc", "model": "m", "data": {}, "state": null, "output": { "content": true, "mime": "video/mp4" } }], "expected": { "url": "https://relay.example.com/v1/videos/video_abc/content", "method": "GET", "headers": { "Authorization": "Bearer k" } } }
+  ]
+}
