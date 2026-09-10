@@ -84,6 +84,16 @@ Nginx 的 `client_max_body_size` **默认只有 1M**，套在前面而不改这�
 
 配置模型的流程为：在「供应商管理」中填写 Base URL 与 API Key，随后在「模型管理」中选择供应商与端点，并设置计费、质量与尺寸。各模型的质量、分辨率、选项栏具体如何填写，可参见速查表 [`model-config-reference.md`](./model-config-reference.md)。
 
+## 使用 Skills 辅助写文章
+
+站点的「使用指南 / 场景方案 / 对比选型 / 博客」由运营方自己维护，在后台「内容运营 → 文章」里粘贴 Markdown 即发布，不随版本附带成品文章。写作交给你自己的 Agent（Codex / Claude Code / Cursor 都可以），把下面这句话发给它，它会自己安装：
+
+```
+帮我安装这个 skills：https://raw.githubusercontent.com/arxuan09/draw-deploy/main/skills/seo-article/SKILL.md
+```
+
+装好后先填技能包第二节「站点事实」（站名、公开地址、用户能选到的模型和上限），再让它写；产出整篇贴到后台「粘贴导入」，解析无误即上线。技能包源文件在本仓库 `skills/seo-article/SKILL.md`。
+
 ## 升级
 
 ```bash
