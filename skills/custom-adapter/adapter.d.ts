@@ -188,6 +188,9 @@ export interface MetaInputs {
   refAudios?: MetaRefSlot;
   refTotal?: number; // 三类合计上限
   framesExclusiveWithRefs?: boolean; // 首尾帧与参考素材不能同时给
+  // 上游不能只靠提示词出片、但不限定给哪一种素材时写 true。
+  // 某个槽位本身 required 的不用写；两者都没有 = 纯文生视频可用。
+  materialRequired?: boolean;
 }
 
 export interface MetaRefSlot {

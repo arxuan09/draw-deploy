@@ -87,7 +87,7 @@ Draw Studio 的运营在后台新增模型时可以选「自定义端点（脚�
 
 - **必须有轮询两钩子**（`buildQueryRequest` / `parseTaskResult`）；没有视频上游是同步返回的，`parseSubmitResponse` 不许返回 `immediate`
 - **`meta.video` 必填**：`durations`（离散档）或 `durationRange`（连续范围）二选一、`aspectRatios`、`resolutions`。这些是上游的固定事实，运营在后台看到的是只读展示，所以要照文档抄全；`materialRefSyntax` 按提示词里指代素材的写法填 `"at"`（`@图片1`）、`"plain"`（`图片1`）或 `""`（无此语法）
-- **`meta.inputs` 声明素材槽**：`firstFrame` / `lastFrame` 写 `required` / `optional` / `none`；`refImages` / `refVideos` / `refAudios` 各写 `{ max }`，上游要求必给的加 `required: true`；三类合计封顶写 `refTotal`；首尾帧与参考素材不能同时给写 `framesExclusiveWithRefs: true`。工作区按这里显示上传框、扣费前按这里拒绝超限
+- **`meta.inputs` 声明素材槽**：`firstFrame` / `lastFrame` 写 `required` / `optional` / `none`；`refImages` / `refVideos` / `refAudios` 各写 `{ max }`，上游要求必给的加 `required: true`；三类合计封顶写 `refTotal`；首尾帧与参考素材不能同时给写 `framesExclusiveWithRefs: true`；上游不能只靠提示词出片、但随便哪种素材都行的写 `materialRequired: true`。工作区按这里显示上传框、扣费前按这里拒绝超限；**能不能只写提示词出片也只看这里**（没有任何 required 就是能），后台没有别的开关
 - **带参考图时的硬锁**写在 `meta.video`：`referenceDurationLock`（只允许这些秒数）、`referenceResolutionLock`、`referenceAspectRatioLock`。有的上游带图时只接 8 秒 + 16:9，就是这个
 - **素材只有 URL**：`input.firstFrame.url`、`input.refImages[i].url` 是本站对象存储的公网地址，直接放进请求让上游自己拉；视频脚本不支持占位符内联字节
 - **`@素材名` 的命名**：`materialRefSyntax` 为 `"at"` 时，用户提示词里写的是 `@图片1 @视频1 @音频1`。上游要求素材带 `name` 的，脚本按顺序生成 `图片N / 视频N / 音频N`，与用户写的对上
@@ -95,7 +95,7 @@ Draw Studio 的运营在后台新增模型时可以选「自定义端点（脚�
 - **成品下载**：公开地址给 `{ url, mime: "video/mp4" }`；要带鉴权头下载的给 `{ content: true, mime }` 并实现 `buildContentRequest`
 - **定价口径**：按秒 `{ mode: "per_second", resolutions: { "720p": 每秒积分 } }`；一口价 `{ mode: "per_call", resolutions: { "720p": 每次积分 } }`。文档写「按次」就问用户要不要按次；键必须是 `meta.video.resolutions` 的子集
 - **上游默认开启的后处理**（例如参考图默认打码人脸）要显式关掉，关不关先问用户
-- 后台对视频脚本没有「试跑」按钮（一条视频要渲染几分钟）：dry-run 核对请求形状，保存后运营自己出一条片验证。fixture 因此更重要，状态词表要一个不漏
+- 后台不会真发视频请求（一条视频要渲染几分钟）：「离线诊断」核对请求形状，保存后运营自己出一条片验证。fixture 因此更重要，状态词表要一个不漏
 
 ## 五、必须同时产出 fixture
 
@@ -127,7 +127,9 @@ docker run --rm -v "$PWD:/w" <镜像> adapter test /w/adapter.js --fixture /w/fi
 
 跑不了就对着 `adapter.d.ts` 逐条过：`meta` 字段都在声明里；`buildSubmitRequest` 和 `parseSubmitResponse` 都有；`immediate` 与 `taskId` 二选一；有 `taskId` 就有 `buildQueryRequest` 和 `parseTaskResult`；状态词表覆盖文档全部值；密钥只从 `ctx.apiKey` 来；用到的 `input` 字段与 `kind` 一致；没有 `import / require / async / await / fetch`。
 
-运营贴进后台后还会：点「校验」（编译 + meta）、dry-run 单个钩子看输出、「试跑一次」真发请求。你的输出应当一次通过这三步。
+本地也能跑同一份离线诊断：`docker run --rm -v "$PWD:/w" <镜像> adapter diagnose /w/adapter.js --base-url <供应商 Base URL> --model-key <模型 Key>`，输出就是后台那份报告。
+
+运营贴进后台后会：点「校验」（编译 + meta），再点「离线诊断」——系统按你的 `meta` 自动造样例输入（纯文本、带参考图、首尾帧、参考素材各一份），离线跑每个钩子，逐项检查提示词 / API Key / 模型 Key / 时长画质比例 / 每个素材是否进了请求、解析函数有没有凭空编 taskId 或猜状态。运营看不懂细节，只看 ✗；有 ✗ 就把整份报告原样贴给你。**报告里每一项都写了输入、输出和哪条检查没过，照着改完把完整脚本再给一遍**，不要只给补丁。你的输出应当一次通过校验和诊断。
 
 ## 七、输出格式
 
