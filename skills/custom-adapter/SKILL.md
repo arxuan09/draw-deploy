@@ -90,7 +90,7 @@ Draw Studio 的运营在后台新增模型时可以选「自定义端点（脚�
 - **`meta.inputs` 声明素材槽**：`firstFrame` / `lastFrame` 写 `required` / `optional` / `none`；`refImages` / `refVideos` / `refAudios` 各写 `{ max }`，上游要求必给的加 `required: true`；三类合计封顶写 `refTotal`；首尾帧与参考素材不能同时给写 `framesExclusiveWithRefs: true`；上游不能只靠提示词出片、但随便哪种素材都行的写 `materialRequired: true`。工作区按这里显示上传框、扣费前按这里拒绝超限；**能不能只写提示词出片也只看这里**（没有任何 required 就是能），后台没有别的开关
 - **带参考图时的硬锁**写在 `meta.video`：`referenceDurationLock`（只允许这些秒数）、`referenceResolutionLock`、`referenceAspectRatioLock`。有的上游带图时只接 8 秒 + 16:9，就是这个
 - **素材只有 URL**：`input.firstFrame.url`、`input.refImages[i].url` 是本站对象存储的公网地址，直接放进请求让上游自己拉；视频脚本不支持占位符内联字节
-- **`@素材名` 的命名**：`materialRefSyntax` 为 `"at"` 时，用户提示词里写的是 `@图片1 @视频1 @音频1`。上游要求素材带 `name` 的，脚本按顺序生成 `图片N / 视频N / 音频N`，与用户写的对上
+- **素材名从 `ref.name` 取，别自己数**：宿主统一编号并写进 `ctx.input` 的每个素材——`refImages[i].name` 是 `图片N`、`refVideos[i].name` 是 `视频N`、`refAudios[i].name` 是 `音频N`，首尾帧是 `首帧` / `尾帧`。`ctx.input.prompt` 里的编号已经按 `materialRefSyntax` 渲染好（`"at"` 保留 `@图片1`，`"plain"` 是 `图片1`），与这些 name 逐一对应。上游要求素材带 `name` 的直接用 `r.name`；自己按下标生成会在编号规则不同的端点上和提示词对不上
 - **分辨率写进模型名的上游**：站内一个模型、多个分辨率档，脚本按 `input.resolution` 拼上游模型名（见 `examples/relay-video-percall/`）。分辨率之外还不同的（素材上限、价格）是不同模型，各写一份脚本
 - **成品下载**：公开地址给 `{ url, mime: "video/mp4" }`；要带鉴权头下载的给 `{ content: true, mime }` 并实现 `buildContentRequest`
 - **定价口径**：按秒 `{ mode: "per_second", resolutions: { "720p": 每秒积分 } }`；一口价 `{ mode: "per_call", resolutions: { "720p": 每次积分 } }`。文档写「按次」就问用户要不要按次；键必须是 `meta.video.resolutions` 的子集

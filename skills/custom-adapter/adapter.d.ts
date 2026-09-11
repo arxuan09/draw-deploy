@@ -78,6 +78,11 @@ export interface Input {
 /** 一份素材的描述；字节永远不进 JS。 */
 export interface Ref {
   ref: string; // 不透明句柄，用于占位符 / multipart parts[].ref
+  // 提示词里对这份素材的称呼：「图片1」「视频1」「音频1」「首帧」「尾帧」。
+  // 宿主统一编号，`ctx.input.prompt` 里的编号与它逐一对应。上游要求素材带
+  // name 时**必须用它**，不要自己按下标生成——编号规则由端点决定，自己数会
+  // 和提示词对不上。图片端点没有编号语法，该字段为空。
+  name?: string;
   url: string; // 公网对象存储地址（上游自己去拉的场景直接用它）；遮罩为 ""
   mime: string; // 原图的 MIME；转码后的用占位符 "mime" 取
   size: number; // 字节数，未知为 0
