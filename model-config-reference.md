@@ -5,7 +5,7 @@
 **已收录：**
 
 - [gpt-image-2（OpenAI）](#gpt-image-2)
-- [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-2.5-flash-image` / `gemini-3.1-flash-image` / `gemini-3-pro-image`）
+- [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-3.1-flash-image` / `gemini-3-pro-image` / `gemini-3.1-flash-lite-image`；`gemini-2.5-flash-image` 2026-10-02 停服）
 - [通义万相 Wan 系列（DashScope）](#通义万相-wan-系列dashscope)（`wan2.7-image-pro` / `wan2.7-image`，**异步端点**）
 
 ---
@@ -49,7 +49,7 @@
 | **GPT Image 2** | `gpt-image-2` | **16** | — |
 | **Nano Banana 2** | `gemini-3.1-flash-image` | **14** | 最多 10 张物体高保真 + 最多 4 张角色一致性 |
 | **Nano Banana Pro** | `gemini-3-pro-image` | **14** | 最多 6 张物体高保真 + 最多 5 张角色一致性 + 最多 3 张风格参考 |
-| **Nano Banana**（原版） | `gemini-2.5-flash-image` | **3** | — |
+| **Nano Banana**（原版，2026-10-02 停服） | `gemini-2.5-flash-image` | **3** | — |
 | **通义万相 Wan** | `wan2.7-image-pro` / `wan2.7-image` | **9** | 详见下方万相章节 |
 
 > 「推荐细分」是官方给出的**用途建议**（物体 / 角色 / 风格各自的优化上限），**总数仍受该行的硬上限约束**。系统只按总数限制，不区分用途。
@@ -135,15 +135,18 @@
 
 ## Gemini Nano Banana 系列
 
-来源：Google Gemini API 官方文档（2026 年最新）。三个模型都走 **`Gemini Nano Banana generateContent`** 端点（端点模板 `gemini` = 宽高比 + 1K/2K/4K 分辨率分级）。
+来源：Google Gemini API 官方文档（2026-09）。这些模型都走 **`Gemini Nano Banana generateContent`** 端点（端点模板 `gemini` = 宽高比 + 分辨率档位）。
+
+> ⚠️ **`gemini-2.5-flash-image`（原版 Nano Banana）2026-10-02 停服**，之后调用全部失败。在用的模型请把模型 Key 改成 `gemini-3.1-flash-image`（Nano Banana 2），只要 1K、追求速度可改 `gemini-3.1-flash-lite-image`。带 `-preview` 的旧名（如 `gemini-3.1-flash-image-preview`、`gemini-3-pro-image-preview`）已于 2026-06-25 停服，同样改成不带 `-preview` 的正式名。
 
 ### 模型对比总览
 
 | 模型名称 | Gemini API 标识符 | 支持的分辨率 (image_size) | 支持的比例数量 | 备注 |
 |---|---|---|---|---|
-| **Nano Banana** | `gemini-2.5-flash-image` | 仅 `"1K"` | 10 种 | 速度优先，仅支持基础 1K 分辨率 |
-| **Nano Banana 2**（推荐） | `gemini-3.1-flash-image` | `"1K"`, `"2K"`, `"4K"` | **14 种** | 支持最全比例，推荐大多数场景 |
+| **Nano Banana 2**（推荐） | `gemini-3.1-flash-image` | `"512"`, `"1K"`, `"2K"`, `"4K"` | **14 种** | 支持最全比例，推荐大多数场景 |
 | **Nano Banana Pro** | `gemini-3-pro-image` | `"1K"`, `"2K"`, `"4K"` | **10 种** | 专业级，最高支持 4K |
+| **Nano Banana 2 Lite** | `gemini-3.1-flash-lite-image` | 仅 `"1K"` | 10 种 | 速度优先，只出 1K |
+| **Nano Banana**（2026-10-02 停服） | `gemini-2.5-flash-image` | 仅 `"1K"` | 10 种 | 停服前请换模型 |
 
 > **默认值**：未指定时 `image_size` 默认 `"1K"`。
 
@@ -164,7 +167,7 @@
 "9:16", "16:9", "21:9"
 ```
 
-**Nano Banana（`gemini-2.5-flash-image`）—— 10 种**
+**Nano Banana 2 Lite（`gemini-3.1-flash-lite-image`）/ Nano Banana（`gemini-2.5-flash-image`）—— 10 种**
 
 ```text
 "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4",
@@ -174,8 +177,8 @@
 
 | 模型 | 支持值 | 说明 |
 |---|---|---|
-| **Nano Banana** | `"1K"` | 固定 1K（约 1024px 级别），无其他选项 |
-| **Nano Banana 2** | `"1K"`, `"2K"`, `"4K"` | 支持 1K/2K/4K 全分辨率 |
+| **Nano Banana 2** | `"512"`, `"1K"`, `"2K"`, `"4K"` | 唯一支持 512 的型号 |
+| **Nano Banana 2 Lite** / **Nano Banana** | `"1K"` | 固定 1K（约 1024px 级别），无其他选项 |
 | **Nano Banana Pro** | `"1K"`, `"2K"`, `"4K"` | 高分辨率输出 |
 
 > - 更高分辨率（2K/4K）会增加生成时间和 Token 消耗。
@@ -190,15 +193,17 @@ gemini 模板下，**宽高比** 配在「图片尺寸选项」、**分辨率档
 | 端点类型 | **端点选择** | 选 `Gemini Nano Banana generateContent` |
 | 模型 slug | **模型 slug** | 填 API 标识符，如 `gemini-3.1-flash-image` |
 | 宽高比（Aspect Ratio） | **图片尺寸选项**（image size options） | 填**宽高比字符串**，如 `1:1` `16:9` `9:16` `21:9`；原样作为 `imageConfig.aspectRatio` 下发，任意 `N:M` 均可透传 |
-| 分辨率档位 1K/2K/4K | **图片质量选项**（image quality options） | 直接用 `1K`/`2K`/`4K` 作质量值最直观（原样透传为 `imageConfig.imageSize`）；也兼容 `high`→4K、`medium`→2K、`low`/`auto`→1K |
+| 分辨率档位 512/1K/2K/4K | **图片质量选项**（image quality options） | 直接用 `1K`/`2K`/`4K`（Nano Banana 2 另可填 `512`）作质量值最直观，原样下发为 `imageConfig.imageSize`；大小写都认，一律按大写 K 发出；也兼容 `high`→4K、`medium`→2K、`low`/`auto`→1K |
 | 比例 → 扣费 | **图片尺寸扣费映射** | 按宽高比定价 |
 | 档位 → 扣费 | **质量扣费映射** | 按 1K/2K/4K 定价（高分辨率成本更高） |
 
-> 字段映射在 `backend/internal/ai/registry.go` + `backend/internal/imagegen/adapters.go` 硬编码：`imageConfig.aspectRatio = getAspectRatio(尺寸选项)`、`imageConfig.imageSize = getGeminiImageSize(质量选项)`。后台无需关心 wire 字段名。
+> 字段映射在 `backend/internal/ai/registry.go` + `backend/internal/imagegen/adapters.go` 硬编码：`imageConfig.aspectRatio = getAspectRatio(尺寸选项)`、`imageConfig.imageSize = geminiImageSizeParam(质量选项)`。后台无需关心 wire 字段名。
+>
+> 「默认参数」里写 `generationConfig`（如 `{"generationConfig":{"temperature":1}}`）会与请求自带的合并，不会冲掉用户选的比例和档位。
 
 **注意事项（与上游能力的差异）**
 
-- ⚠️ **分辨率档位随质量始终下发**：给只支持 `1K` 的 Nano Banana（`gemini-2.5-flash-image`）配 `2K`/`4K`，上游可能报错或被忽略 —— 按各模型实际支持范围设置质量选项。
+- ⚠️ **分辨率档位随质量始终下发**：给只支持 `1K` 的 Lite / 原版配 `2K`/`4K`，或给 Pro 配 `512`，上游会报错 —— 按各模型实际支持范围设置质量选项。
 - ⚠️ **极端比例按模型区分**：`1:8`/`8:1`/`1:4`/`4:1` 仅 Nano Banana 2 支持；给另外两个模型配这些比例可能报错。
 
 ---
@@ -236,7 +241,8 @@ gemini 模板下，**宽高比** 配在「图片尺寸选项」、**分辨率档
 
 ### 输入图片（图像编辑 / 多图参考）
 
-- 端点 `SupportsReferenceImages = true`：支持传入参考图做**图像编辑 / 多图参考**(0–9 张，本系统按「编辑」处理，参考图经 SSRF 校验后以 base64 内联下发)。
+- 端点 `SupportsReferenceImages = true`：支持传入参考图做**图像编辑 / 多图参考**(0–9 张，本系统按「编辑」处理，参考图经 SSRF 校验后以 base64 内联下发)。**端点硬上限 9 张**：模型的「最大参考图数量」留空或填得更大，也按 9 张限制。
+- **提示词上限 5000 字**：上游对超出部分静默截断，本系统在提交前拦下超长提示词，不扣费。
 - **不支持**红蒙版 inpaint(`SupportsInpaint = false`，万相用 bbox 框选式编辑，非蒙版)与 outpaint。
 - 上游图片限制：JPEG/PNG(无透明通道)/BMP/WEBP，宽高 `[240, 8000]`、比例 `[1:8, 8:1]`、≤20MB。
 
@@ -244,7 +250,7 @@ gemini 模板下，**宽高比** 配在「图片尺寸选项」、**分辨率档
 
 | 概念 | 对应后台字段 | 填写说明 |
 |---|---|---|
-| 供应商 | **供应商管理** | 新建供应商：Base URL = `https://dashscope.aliyuncs.com`(北京；新加坡用对应域名)，API Key = 百炼 `sk-xxx`。供应商 key 可自定义，鉴权/路径由端点决定 |
+| 供应商 | **供应商管理** | 新建供应商：Base URL 推荐填业务空间地址 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com`（阿里云推荐生产环境使用；老域名 `https://dashscope.aliyuncs.com` 目前仍可用），API Key = 百炼 `sk-xxx`，地址、模型与 Key 须同一地域。`/api/v1` 由系统自动补上 |
 | 端点类型 | **端点选择** | 选 `DashScope 通义万相 image (异步)` |
 | 模型 slug | **模型 slug / 模型 Key** | 填 `wan2.7-image-pro` 或 `wan2.7-image` |
 | 分辨率档位 1K/2K/4K | **图片质量选项**（image quality options） | 用 `1K`/`2K`/`4K` 作质量值；也兼容 `high`→4K、`medium`→2K、`low`/`auto`→1K |
