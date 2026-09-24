@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 )
@@ -146,7 +145,7 @@ func TestKeyIsPassedThrough(t *testing.T) {
 	}
 }
 
-// 清单第 11 条：转换器不校验 Key，谁都能调，所以素材只下载公网地址。
+// 清单第 10 条：转换器不校验 Key，谁都能调，所以素材只下载公网地址。
 func TestMaterialsMustBePublic(t *testing.T) {
 	c := &Ctx{ctx: context.Background()}
 	for _, u := range []string{"http://127.0.0.1:1/x.png", "http://169.254.169.254/latest/meta-data/", "http://10.0.0.8/a.png", "file:///etc/passwd"} {
@@ -162,7 +161,7 @@ func TestCapabilitiesMatchTheCode(t *testing.T) {
 	h, _, srv := setup(t)
 	rec := call(h, "GET", "/v1/capabilities", nil, nil)
 	caps := decode(t, rec)
-	if rec.Code != 200 || caps["protocol"] != float64(1) || caps["dryRun"] != true {
+	if rec.Code != 200 || caps["protocol"] != float64(1) {
 		t.Fatalf("能力声明 = %d %v", rec.Code, caps)
 	}
 	for _, m := range caps["models"].([]any) {
@@ -182,7 +181,7 @@ func TestCapabilitiesMatchTheCode(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 清单第 5、12 条：模型校验、不支持的值
+// 清单第 5、11 条：模型校验、不支持的值
 // ---------------------------------------------------------------------------
 
 func TestBadRequestsNeverReachTheUpstream(t *testing.T) {
@@ -279,32 +278,7 @@ func TestUpstreamErrorsAreClassified(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 清单第 7、13 条：预演不调上游、Key 打码
-// ---------------------------------------------------------------------------
-
-func TestDryRunReportsWithoutCallingTheUpstream(t *testing.T) {
-	h, up, _ := setup(t)
-	rec := call(h, "POST", "/v1/images/generate", imageReq("16:9", "2K", "https://oss.example.com/a.png"), map[string]string{"X-Draw-Dry-Run": "1"})
-	out := decode(t, rec)
-	reqs, _ := out["upstreamRequests"].([]any)
-	if rec.Code != 200 || out["dryRun"] != true || len(reqs) == 0 {
-		t.Fatalf("预演应回 dryRun + upstreamRequests，实际 %d %s", rec.Code, rec.Body.String())
-	}
-	if up.calls != 0 {
-		t.Error("预演不能真的调上游")
-	}
-	first := reqs[0].(map[string]any)
-	auth := first["headers"].(map[string]any)["Authorization"].(string)
-	if !strings.Contains(auth, "*") || strings.Contains(auth, "up-key") {
-		t.Errorf("预演回报里的密钥没打码：%q", auth)
-	}
-	if !strings.HasSuffix(first["url"].(string), "/v1/images/generations") {
-		t.Errorf("预演回报的地址 = %v", first["url"])
-	}
-}
-
-// ---------------------------------------------------------------------------
-// 清单第 8、9、10 条：视频任务、查询状态码、结果链接
+// 清单第 7、8、9 条：视频任务、查询状态码、结果链接
 // ---------------------------------------------------------------------------
 
 func TestVideoTaskLifecycle(t *testing.T) {

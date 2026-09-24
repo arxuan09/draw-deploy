@@ -3,7 +3,7 @@
 // 这是一个完整可运行的示例：
 //
 //	server.go          与上游无关的部分：路由、取 Key、请求体解析、模型校验、
-//	                   预演（dry-run）拦截、错误格式、读 .env。
+//	                   错误格式、补 downloadWithKey、素材只下载公网地址、读 .env。
 //	adapter.go         「协议 ↔ 上游」的翻译：能力声明，以及把协议请求翻译成上游请求、
 //	                   把上游响应翻译回来的几个函数。换一个上游只需要重写它。
 //	converter_test.go  代码层面的自查：用模拟上游把 SKILL.md 第三节的清单逐条测一遍。
@@ -252,24 +252,11 @@ func truncate(s string, n int) string {
 // Ctx：每个请求一份，adapter 通过它访问上游
 // ---------------------------------------------------------------------------
 
-// UpstreamRequest 是预演时回报的一条上游请求。
-type UpstreamRequest struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Body    any               `json:"body,omitempty"`
-}
-
 type Ctx struct {
-	// DryRun：预演。此时 Upstream 不发请求，记录后返回 errDryRun，把记录回报给 Draw Studio。
-	DryRun bool
 	// APIKey：上游的 Key，就是 Draw Studio 这次请求带来的 Key。调上游一律用它。
-	APIKey   string
-	ctx      context.Context
-	recorded []UpstreamRequest
+	APIKey string
+	ctx    context.Context
 }
-
-var errDryRun = errors.New("dry-run: upstream request recorded")
 
 var upstreamClient = &http.Client{Timeout: 10 * time.Minute}
 
@@ -282,9 +269,7 @@ type UpstreamResponse struct {
 
 func (r *UpstreamResponse) OK() bool { return r.Status >= 200 && r.Status < 300 }
 
-// Upstream 调上游：jsonBody 非 nil 时以 JSON 发送。所有上游请求都走这里——
-// 预演时它只记录、返回 errDryRun，adapter 把这个错误原样 return 即可。
-// 非 2xx 不报错，由 adapter 判断。
+// Upstream 调上游：jsonBody 非 nil 时以 JSON 发送。非 2xx 不报错，由 adapter 判断。
 func (c *Ctx) Upstream(method, rawURL string, headers map[string]string, jsonBody any) (*UpstreamResponse, error) {
 	var body []byte
 	if jsonBody != nil {
@@ -294,19 +279,11 @@ func (c *Ctx) Upstream(method, rawURL string, headers map[string]string, jsonBod
 		}
 		headers = withHeader(headers, "Content-Type", "application/json")
 	}
-	return c.send(method, rawURL, headers, body, jsonBody)
+	return c.UpstreamRaw(method, rawURL, headers, body)
 }
 
-// UpstreamRaw 发任意 body（如 multipart）。dryRunBody 是预演时回报的 body 描述。
-func (c *Ctx) UpstreamRaw(method, rawURL string, headers map[string]string, body []byte, dryRunBody any) (*UpstreamResponse, error) {
-	return c.send(method, rawURL, headers, body, dryRunBody)
-}
-
-func (c *Ctx) send(method, rawURL string, headers map[string]string, body []byte, record any) (*UpstreamResponse, error) {
-	if c.DryRun {
-		c.recorded = append(c.recorded, UpstreamRequest{Method: method, URL: rawURL, Headers: maskHeaders(headers), Body: record})
-		return nil, errDryRun
-	}
+// UpstreamRaw 发任意 body（如 multipart，Content-Type 自己放进 headers）。
+func (c *Ctx) UpstreamRaw(method, rawURL string, headers map[string]string, body []byte) (*UpstreamResponse, error) {
 	req, err := http.NewRequestWithContext(c.ctx, method, rawURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, Fail("converter", err.Error())
@@ -354,11 +331,7 @@ func publicIP(ip net.IP) bool {
 }
 
 // FetchMaterial 下载素材（参考图等），返回字节和 MIME（上游要文件时用）。只下载公网 http(s) 地址。
-// 预演时不下载，返回占位内容。
 func (c *Ctx) FetchMaterial(rawURL string) ([]byte, string, error) {
-	if c.DryRun {
-		return []byte("dry-run-placeholder"), "application/octet-stream", nil
-	}
 	u, err := url.Parse(rawURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		return nil, "", Fail("user_input", "bad material url: "+rawURL)
@@ -396,20 +369,6 @@ func (c *Ctx) MaterialDataURL(rawURL string) (string, error) {
 		return "", err
 	}
 	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(raw), nil
-}
-
-var secretHeaderRe = regexp.MustCompile(`(?i)auth|key|token|secret|signature`)
-
-// maskHeaders 把疑似密钥的请求头打码，预演回报里不能出现完整密钥。
-func maskHeaders(h map[string]string) map[string]string {
-	out := map[string]string{}
-	for k, v := range h {
-		if secretHeaderRe.MatchString(k) && v != "" {
-			v = v[:min(6, len(v)/2)] + "***"
-		}
-		out[k] = v
-	}
-	return out
 }
 
 func withHeader(h map[string]string, k, v string) map[string]string {
@@ -468,7 +427,7 @@ func (s *server) checkModel(model, kind string) error {
 }
 
 func (s *server) newCtx(r *http.Request) *Ctx {
-	return &Ctx{DryRun: r.Header.Get("X-Draw-Dry-Run") == "1", APIKey: bearer(r), ctx: r.Context()}
+	return &Ctx{APIKey: bearer(r), ctx: r.Context()}
 }
 
 func decodeBody(r *http.Request, v any) error {
@@ -478,12 +437,8 @@ func decodeBody(r *http.Request, v any) error {
 	return nil
 }
 
-// respond 统一处理 adapter 的返回：预演 → 回报记录；错误 → 协议错误格式。
-func respond(w http.ResponseWriter, c *Ctx, status int, result any, err error) {
-	if errors.Is(err, errDryRun) {
-		writeJSON(w, http.StatusOK, map[string]any{"dryRun": true, "upstreamRequests": c.recorded})
-		return
-	}
+// respond 统一处理 adapter 的返回：错误 → 协议错误格式。
+func respond(w http.ResponseWriter, status int, result any, err error) {
 	if err != nil {
 		writeError(w, err)
 		return
@@ -517,7 +472,7 @@ func (s *server) routes() http.Handler {
 		if err == nil && res != nil && res.TaskID != "" && len(res.Images) == 0 {
 			status = http.StatusAccepted // 异步：Draw Studio 之后调 /images/query
 		}
-		respond(w, c, status, res, err)
+		respond(w, status, res, err)
 	})
 	mux.HandleFunc("POST /v1/images/query", func(w http.ResponseWriter, r *http.Request) {
 		var q struct {
@@ -533,7 +488,7 @@ func (s *server) routes() http.Handler {
 		}
 		c := s.newCtx(r)
 		res, err := s.adapter.QueryImage(c, q.TaskID)
-		respond(w, c, http.StatusOK, res, err)
+		respond(w, http.StatusOK, res, err)
 	})
 	mux.HandleFunc("POST /v1/videos/submit", func(w http.ResponseWriter, r *http.Request) {
 		var req VideoRequest
@@ -551,7 +506,7 @@ func (s *server) routes() http.Handler {
 		}
 		c := s.newCtx(r)
 		res, err := s.adapter.SubmitVideo(c, &req)
-		respond(w, c, http.StatusOK, res, err)
+		respond(w, http.StatusOK, res, err)
 	})
 	mux.HandleFunc("POST /v1/videos/query", func(w http.ResponseWriter, r *http.Request) {
 		var q struct {
@@ -567,7 +522,7 @@ func (s *server) routes() http.Handler {
 		}
 		c := s.newCtx(r)
 		res, err := s.adapter.QueryVideo(c, q.TaskID)
-		respond(w, c, http.StatusOK, res, err)
+		respond(w, http.StatusOK, res, err)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, &ProtocolError{Category: "user_input", Message: "not found", Status: 404})

@@ -41,7 +41,6 @@ var adapter = Adapter{
 const capabilities = `{
   "protocol": 1,
   "name": "中转站（图片 + 视频）",
-  "dryRun": true,
   "models": [
     {
       "model": "seedream-5.0",
@@ -150,7 +149,7 @@ func generateImage(c *Ctx, req *ImageRequest) (*ImageResponse, error) {
 	}
 	res, err := c.Upstream("POST", base+"/v1/images/generations", upstreamAuth(c), body)
 	if err != nil {
-		return nil, err // 包括预演的 errDryRun，原样返回
+		return nil, err
 	}
 	if !res.OK() {
 		return nil, UpstreamError(res.Status, res.Body)

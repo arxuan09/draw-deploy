@@ -72,7 +72,6 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 {
   "protocol": 1,
   "name": "我的转换器",
-  "dryRun": true,
   "models": [ ...ModelCaps ]
 }
 ```
@@ -81,7 +80,6 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 |---|---|---|
 | `protocol` | int | 固定 `1` |
 | `name` | string | 可选，后台展示用 |
-| `dryRun` | bool | 是否实现了第 5 节的预演。**只有声明了才会收到预演请求** |
 | `models` | ModelCaps[] | 至少一个；`model` 不能重复 |
 
 ### 2.1 ModelCaps
@@ -332,41 +330,3 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 - `message` 只进后台任务记录，**不直接给终端用户看**（上游原文可能带渠道信息、英文）。写清楚，运营方要靠它排查。
 - 不带 `category` 时 Draw Studio 按 HTTP 状态兜底：400 / 422 算 `user_input`，其它算 `upstream`。
 - 所有失败都会退还用户积分，与分类无关。
-
----
-
-## 5. 预演（dry-run，建议实现）
-
-能力声明里写了 `"dryRun": true`，Draw Studio 的检查工具才会发带请求头 `X-Draw-Dry-Run: 1` 的生成请求（`/images/generate`、`/videos/submit`）。收到这种请求时转换器**不调上游**，只回报它本来要发的上游请求：
-
-```json
-{
-  "dryRun": true,
-  "upstreamRequests": [
-    { "method": "POST", "url": "https://relay.example.com/v1/images/generations",
-      "headers": { "Authorization": "Bearer sk-***" },
-      "body": { "model": "seedream-5.0", "prompt": "…" } }
-  ]
-}
-```
-
-- 密钥必须打码（值里带 `*`）。
-- 预演时不要下载素材，body 里需要 base64 的地方放占位文字即可。
-- 一次生成要调多个上游接口的，至少回报第一个。
-
-生产环境里 Draw Studio **不会**发这个请求头；它只来自 `protocol check`。
-
----
-
-## 6. 一致性检查（可选）
-
-写转换器时的自查靠转换器自己的单元测试（模拟上游，不需要 Draw Studio）。转换器部署好以后，如果想从 Draw Studio 这一侧再核对一遍，可以在**部署 Draw Studio 的服务器**上（它本来就用 Docker 运行）跑镜像自带的检查工具：
-
-```
-docker run --rm --network host arxuan09/drawnext:latest \
-  protocol check --base-url https://conv.example.com --key <上游Key>
-```
-
-- 检查鉴权（不带 Key 必须 401）、能力声明、错误格式、查询不存在的任务是否 404；声明了 `dryRun` 的还会按声明造样例请求，打印转换器回报的上游请求。
-- 加 `--model <模型>` 只查一个模型；加 `--live --model <模型>` 真实出一次图 / 一条视频，并按 `downloadWithKey` 的规则下载结果（**会花上游额度**）。
-- 报告是 Markdown，✗ 必须修，⚠ 是建议。
