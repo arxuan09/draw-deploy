@@ -82,6 +82,14 @@ Nginx 的 `client_max_body_size` **默认只有 1M**，套在前面而不改这�
 
 判断是谁拦的：**413 + HTML 错误页 = 反向代理**；**400 + `{"ok":false,"error":"Image is too large (max N MB)."}` = 本系统的上限**。
 
+### 静态资源缓存与反向代理
+
+`/assets/` 下的脚本、样式、字体文件名都带内容哈希，内容一变文件名就变，所以程序对它们返回 `Cache-Control: public, max-age=31536000, immutable`：用户再次打开站点时直接用浏览器本地缓存，不再逐个回源校验。页面 HTML（包括首页）返回 `no-cache`，发版后用户刷新即可拿到新版本。
+
+反向代理或面板（Nginx、1Panel、宝塔等）如果给 `.js` / `.css` 另设了浏览器缓存时间（例如 Nginx 的 `expires 1m;`），会**覆盖**程序返回的缓存头，用户每次打开站点都要把这些文件回源校验一遍，首屏明显变慢。对 `/assets/` 透传程序的响应头即可：删掉针对 js / css 的 `expires` 一类规则。
+
+检查方法：浏览器开发者工具的「网络」里点开 `/assets/index-…js`，响应头 `cache-control` 应为 `public, max-age=31536000, immutable`；如果是 `max-age=60` 之类，就是前面某一层改写了它。CDN 可以缓存 `/assets/`，但不要缓存页面 HTML。
+
 配置模型的流程为：在「供应商管理」中填写 Base URL 与 API Key，随后在「模型管理」中选择供应商与端点，并设置计费、质量与尺寸。各模型的质量、分辨率、选项栏具体如何填写，可参见速查表 [`model-config-reference.md`](./model-config-reference.md)。
 
 ## 使用 Skills 辅助写文章
