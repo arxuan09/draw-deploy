@@ -147,10 +147,28 @@ docker compose pull && docker compose up -d
 | 上传图片提示「Image is too large」 | 本系统的上限，到后台「存储 → 上传大小上限(MB)」调整 |
 | 端口被占用 | 修改 `.env` 的 `APP_PORT` 后执行 `./update.sh` |
 | 删除部署目录后数据丢失 | 数据位于 `./data`，删目录即丢失，请定期使用 `mysqldump` 备份 |
+| 后台「系统日志」提示日志目录没有挂载 | 自定义的 compose 少了 `./data/cache:/app/data/cache` 这一行挂载，日志写在容器里，重建即丢失。补上后执行 `./update.sh` |
 
 排查时常用以下命令：
 
 ```bash
-docker compose logs -f drawnext     # 应用日志
+docker compose logs -f drawnext     # 应用日志（实时）
 docker compose ps                   # 容器状态
+sudo tail -f data/cache/logs/draw-$(date -u +%F).log   # 系统日志文件（JSON，每行一条）
 ```
+
+### 系统日志
+
+程序把运行日志按天写到 `data/cache/logs/draw-日期.log`（UTC 日期，单个文件超过 100 MB 再切分），自动保留 14 天、总量不超过 1 GB，不需要手动清理。后台「系统 → 系统日志」可以按时间、级别、模块、关键词查询，也能下载原始文件；文件属主是 root，在宿主机上查看需要 sudo。
+
+`docker logs` 那一份默认不限大小。新版 `docker-compose.yml` 已限制为 3 个 50 MB 的文件；2.119.0 之前部署的，`update.sh` 不会改你的 compose，请在 `drawnext` 服务下手动加上：
+
+```yaml
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+```
+
+然后执行 `docker compose up -d` 生效。

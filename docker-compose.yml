@@ -58,7 +58,16 @@ services:
     ports:
       - "${APP_PORT:-16789}:3000"
     volumes:
+      # 图片缓存、站点图标和系统日志(data/cache/logs)都在这里,
+      # 少了这一行,容器重建后它们就没了。
       - ./data/cache:/app/data/cache
+    # docker logs 那一份默认不限大小,这里限到 3 × 50 MB;
+    # 完整的系统日志在 data/cache/logs,后台「系统日志」可查。
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - drawnext-net
     depends_on:
