@@ -6,7 +6,7 @@
 
 - [gpt-image-2（OpenAI）](#gpt-image-2)
 - [GPT Image 2.5（OpenAI，`gpt-image-2.5-flare` / `gpt-image-2.5-sunburst`）](#gpt-image-25)
-- [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-3.1-flash-image` / `gemini-3-pro-image` / `gemini-3.1-flash-lite-image`；`gemini-2.5-flash-image` 2026-10-02 停服）
+- [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-nano-banana-2.1` / `gemini-3.1-flash-image` / `gemini-3-pro-image` / `gemini-3.1-flash-lite-image`；`gemini-2.5-flash-image` 2026-10-02 停服）
 - [通义万相 Wan 系列（DashScope）](#通义万相-wan-系列dashscope)（`wan2.7-image-pro` / `wan2.7-image`，**异步端点**）
 
 ---
@@ -160,7 +160,7 @@
 
 ## Gemini Nano Banana 系列
 
-来源：Google Gemini API 官方文档（2026-09）。这些模型都走 **`Gemini Nano Banana generateContent`** 端点（端点模板 `gemini` = 宽高比 + 分辨率档位）。
+来源：Google Gemini API 官方文档（2026-09；Nano Banana 2.1 为 2026-10-10 查阅）。这些模型都走 **`Gemini Nano Banana generateContent`** 端点（端点模板 `gemini` = 宽高比 + 分辨率档位）。
 
 > ⚠️ **`gemini-2.5-flash-image`（原版 Nano Banana）2026-10-02 停服**，之后调用全部失败。在用的模型请把模型 Key 改成 `gemini-3.1-flash-image`（Nano Banana 2），只要 1K、追求速度可改 `gemini-3.1-flash-lite-image`。带 `-preview` 的旧名（如 `gemini-3.1-flash-image-preview`、`gemini-3-pro-image-preview`）已于 2026-06-25 停服，同样改成不带 `-preview` 的正式名。
 
@@ -168,7 +168,8 @@
 
 | 模型名称 | Gemini API 标识符 | 支持的分辨率 (image_size) | 支持的比例数量 | 备注 |
 |---|---|---|---|---|
-| **Nano Banana 2**（推荐） | `gemini-3.1-flash-image` | `"512"`, `"1K"`, `"2K"`, `"4K"` | **14 种** | 支持最全比例，推荐大多数场景 |
+| **Nano Banana 2.1**（推荐） | `gemini-nano-banana-2.1` | `"1K"`, `"2K"`, `"4K"`（**不支持 512**） | **14 种** | 2026-10-06 正式版，Nano Banana 2 的升级，官方推荐新接入用它 |
+| **Nano Banana 2** | `gemini-3.1-flash-image` | `"512"`, `"1K"`, `"2K"`, `"4K"` | **14 种** | 唯一支持 512 的型号 |
 | **Nano Banana Pro** | `gemini-3-pro-image` | `"1K"`, `"2K"`, `"4K"` | **10 种** | 专业级，最高支持 4K |
 | **Nano Banana 2 Lite** | `gemini-3.1-flash-lite-image` | 仅 `"1K"` | 10 种 | 速度优先，只出 1K |
 | **Nano Banana**（2026-10-02 停服） | `gemini-2.5-flash-image` | 仅 `"1K"` | 10 种 | 停服前请换模型 |
@@ -177,7 +178,7 @@
 
 ### 支持的宽高比（Aspect Ratio）
 
-**Nano Banana 2（`gemini-3.1-flash-image`）—— 最全，14 种**
+**Nano Banana 2.1（`gemini-nano-banana-2.1`）/ Nano Banana 2（`gemini-3.1-flash-image`）—— 最全，14 种**
 
 ```text
 "1:1", "1:4", "1:8", "2:3", "3:2", "3:4",
@@ -202,6 +203,7 @@
 
 | 模型 | 支持值 | 说明 |
 |---|---|---|
+| **Nano Banana 2.1** | `"1K"`, `"2K"`, `"4K"` | 配了 `512` 上游会报错 |
 | **Nano Banana 2** | `"512"`, `"1K"`, `"2K"`, `"4K"` | 唯一支持 512 的型号 |
 | **Nano Banana 2 Lite** / **Nano Banana** | `"1K"` | 固定 1K（约 1024px 级别），无其他选项 |
 | **Nano Banana Pro** | `"1K"`, `"2K"`, `"4K"` | 高分辨率输出 |
@@ -229,7 +231,21 @@ gemini 模板下，**宽高比** 配在「图片尺寸选项」、**分辨率档
 **注意事项（与上游能力的差异）**
 
 - ⚠️ **分辨率档位随质量始终下发**：给只支持 `1K` 的 Lite / 原版配 `2K`/`4K`，或给 Pro 配 `512`，上游会报错 —— 按各模型实际支持范围设置质量选项。
-- ⚠️ **极端比例按模型区分**：`1:8`/`8:1`/`1:4`/`4:1` 仅 Nano Banana 2 支持；给另外两个模型配这些比例可能报错。
+- ⚠️ **极端比例按模型区分**：`1:8`/`8:1`/`1:4`/`4:1` 仅 Nano Banana 2 / 2.1 支持；给其他模型配这些比例可能报错。
+
+**Nano Banana 2.1 补充**
+
+- **配置方式**：端点选 `Gemini Nano Banana generateContent`，在「计费 / 档位积分」点「从预设填充」，有 Nano Banana 2.1 / 2 / Pro / 2 Lite 四个预设，一键填好模型 Key、分辨率档位、比例、最大参考图数量和思考强度；积分留空 = 按基础扣费，按上游单价填写。手动配置时，2.1 的质量选项填 `1K` `2K` `4K`（不要填 `512`）。
+- **思考强度**：Gemini 3 系出图模型都会先思考再出图，不能关闭；`minimal` 最快。模型表单的「思考强度」勾选开放给用户的档位并选默认档：勾选后用户在生成设置里看到「快速 / 均衡 / 深入」，Agent 也会按任务选档，放大、去背景等没有选择器的入口用默认档；一档不勾 = 用户看不到此选项，请求不带思考强度（按上游默认）。思考强度不影响扣费。「默认参数」里写的 `thinkingConfig` 仍然有效，但用户 / 默认档优先。模型思考时可能生成最多两张中间草稿图，系统只保存最终图。各模型可选值：
+
+  | 模型 | 可选值 | 默认 |
+  |---|---|---|
+  | Nano Banana 2.1 | `minimal` / `medium` / `high` | `medium` |
+  | Nano Banana 2 / Nano Banana 2 Lite | `minimal` / `high` | `minimal` |
+  | Nano Banana Pro | 不可设置 | — |
+
+  从 Nano Banana 2 换到 2.1 时，官方默认思考等级由 `minimal` 变为 `medium`，出图会慢一些；想保持原来的速度，把 2.1 的默认档设为「快速」。
+- **接口说明**：官方新文档改用 Interactions API 举例，generateContent 文档标为「Legacy」但仍可调用，官方未给停用日期；本系统继续走 generateContent。
 
 ---
 
