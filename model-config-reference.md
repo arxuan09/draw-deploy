@@ -5,6 +5,7 @@
 **已收录：**
 
 - [gpt-image-2（OpenAI）](#gpt-image-2)
+- [GPT Image 2.5（OpenAI，`gpt-image-2.5-flare` / `gpt-image-2.5-sunburst`）](#gpt-image-25)
 - [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-3.1-flash-image` / `gemini-3-pro-image` / `gemini-3.1-flash-lite-image`；`gemini-2.5-flash-image` 2026-10-02 停服）
 - [通义万相 Wan 系列（DashScope）](#通义万相-wan-系列dashscope)（`wan2.7-image-pro` / `wan2.7-image`，**异步端点**）
 
@@ -16,8 +17,9 @@
 
 | 本文档里的概念 | 对应后台字段 | 填写说明 |
 |---|---|---|
-| 质量等级（Quality） | **图片质量选项**（image quality options） | 填入 `auto` `low` `medium` `high` |
-| 质量 → 扣费 | **质量扣费映射**（quality credit mapping） | 每个质量等级单独定价；高质量成本更高 |
+| 质量等级（Quality） | **图片质量选项**（image quality options） | 填入 `auto` `low` `medium` `high`；GPT Image 2.5 另有 `xhigh` `max`。表单顶部「从预设填充」可一键填好 |
+| 质量 → 扣费 | **质量扣费映射**（quality credit mapping） | 每个质量等级单独定价；积分留空 = 按「基础积分」扣 |
+| 透明背景 | **透明背景** 开关 | GPT Image 2.5、gpt-image-1 / 1.5 可开；**gpt-image-2 不支持，开了上游会报错** |
 | 宽高比（Aspect Ratio） | **图片尺寸选项**（image size options） | 填**宽高比字符串**，如 `1:1` `16:9` `9:16` `21:9`，特殊值 `auto` = 模型自动决定；比例不得超过 3:1。`21:9` 约为 2.33:1，在合法范围内，可按业务需要自行添加（系统不会强制追加默认比例） |
 | 分辨率档位 → 扣费 | **尺寸档位附加积分**（1K/2K/4K 三个输入框） | 按实际分辨率落入的档位额外加收；留空按 0 算，「自动」不加收 |
 | 自定义分辨率 | **允许自定义分辨率** 开关 | 开启后用户可直接填 `宽×高`（前端自动修正为合法值），按落入的 1K/2K/4K 档位收「尺寸档位附加积分」；仅 gpt-image-2 这类任意分辨率模型可开 |
@@ -130,6 +132,29 @@
 - 正方形图像通常生成速度最快。
 - 超出约束范围的请求将返回错误。
 - 实际生成时间与成本会随 `quality` 和 `size` 显著变化（高分辨率 + 高质量成本最高）。
+
+---
+
+## GPT Image 2.5
+
+来源：OpenAI 图像生成指南（2026-10-10 查阅）。官方建议新接入一律用 2.5 系。
+
+| 项目 | 内容 |
+|---|---|
+| 模型 | `gpt-image-2.5-flare`（日常快速出图）、`gpt-image-2.5-sunburst`（编辑精度优先） |
+| 质量 | `auto` `low` `medium` `high` `xhigh` `max`（比 gpt-image-2 多 `xhigh` / `max`） |
+| 尺寸 | 与 gpt-image-2 完全相同（任意 `宽x高`，约束见上一节），配置方式也相同 |
+| 透明背景 | 支持：`background: "transparent"` + PNG / WebP 输出 |
+
+**后台配置**：新增模型时选 `OpenAI /v1/images/generations` 端点，点表单「计费 / 档位积分」里的「从预设填充 → GPT Image 2.5 Flare / Sunburst」，会填好模型 Key、六档质量和「允许扩图」「允许自定义分辨率」「透明背景」三个开关；尺寸和价格不动。新加的「超高」「极致」两档积分留空，按基础积分扣，按上游单价改即可。中转站的模型名可能不同，以中转站为准改「模型 Key」。
+
+**透明背景开了之后用户能做什么**：
+
+- 生成设置面板底部出现「透明背景」开关，打开后出透明 PNG（不加价）；带参考图改图同样生效。
+- 画布选中图片，操作栏多一个「去背景」，用支持透明背景的模型重新生成一张透明底的图（不是像素级抠图，细节可能有细微变化）。
+- Agent 做贴纸、图标、商品抠图这类素材时会自己选支持透明背景的模型。
+
+**已知现象**（社区反馈 + 2026-10-10 中转站实测，系统不做处理）：不透明区域 alpha 最高 254；要求投影时投影常变成白色光晕；拿透明 PNG 当参考图再要透明底，背景会出脏。
 
 ---
 

@@ -106,6 +106,7 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 | `outpaint` | bool | 支持扩图（需要参考图，且必须同时 `customSize: true`：扩图按任意像素尺寸下发） |
 | `layers` | bool | 支持图层拆分（需要参考图） |
 | `customSize` | bool | 接受任意像素尺寸（只适用于 `openai` 模板） |
+| `transparentBackground` | bool | 可选，支持透明背景输出。声明后后台才能打开该模型的「透明背景」开关，用户打开时请求里 `background` 为 `"transparent"`、`outputFormat` 为 `"png"`，返回的图片必须带透明通道 |
 | `promptMaxChars` | int | 可选，提示词字符上限，超了在扣费前拦下 |
 | `promptMaxBytes` | int | 可选，提示词字节上限（UTF-8） |
 | `pollIntervalMs` | int | 可选，异步出图的默认轮询间隔（500～60000） |
@@ -193,7 +194,7 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 | `size.width` / `size.height` | 像素。`gemini` 模板按档位长边 1024 / 2048 / 3840 推算；`openai` 模板是工作台实际换算的尺寸（16 的倍数、长边 ≤ 3840、比例 ≤ 3:1）。`auto` 时为 `null` |
 | `quality` | 质量值：`gemini` 模板是档位（`"2K"`），`openai` 模板是后台配置的质量值 |
 | `outputFormat` | 可选，`png` / `jpeg` / `webp` |
-| `background` | 可选，`auto` / `transparent` / `opaque` |
+| `background` | 可选，`auto` / `transparent` / `opaque`。只有声明了 `transparentBackground` 的模型才会收到 `transparent` |
 | `references` | 参考图，按用户给的顺序。没有时是 `[]` |
 | `mask` | 仅 `inpaint`：`{"dataUrl": "data:image/png;base64,…"}`，红色区域是要重画的部分，尺寸与 `references[0]` 相同 |
 | `layers` | 仅 `layers`：`{"count": 6}`，总层数（含底图）2～17；`0` 表示由上游决定 |
