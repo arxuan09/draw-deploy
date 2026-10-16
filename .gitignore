@@ -5,3 +5,7 @@
 
 # 容器数据（bind 挂载到部署目录的 ./data），切勿提交
 /data/
+
+# Python 字节码（运行技能里的脚本时生成）
+__pycache__/
+*.pyc
