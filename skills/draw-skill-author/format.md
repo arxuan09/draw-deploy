@@ -29,8 +29,6 @@ summary: { zh: "……做什么 + 什么时候用……", en: "……what it mak
 placeholder: { zh: "……", en: "……" }
 category: design
 keywords: [poster, food, neon]
-logo: |-
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>
 references:
   - { file: layout.webp, note: "借三段式版式与留白,不借菜品" }
 ---
@@ -51,7 +49,7 @@ references:
 | `placeholder.zh` / `placeholder.en` | 否 | ≤ 120 字，单行；用户选中技能时输入框里的示例说法，可带 `[占位符]` |
 | `category` | 是 | 只能是下面分类表里的一个 key |
 | `keywords` | 否 | ≤ 5 个，每个 ≤ 20 字，不含逗号 |
-| `logo` | 否 | 以 `<svg` 开头的 SVG 代码，≤ 20000 字节；不填用分类图标 |
+| `logo` | 不要写 | 站点不再显示技能 Logo（卡片用第一张示例图，没有示例图时用技能名排成的文字封面）；旧包里写了也只会被忽略 |
 | `references` | 有参考图时 | 每项 `{ file, note }`：`file` 是 `references/` 里的文件名，`note` ≤ 60 字，说明借这张图的什么 |
 
 ### 写法限制（校验器只认这个子集）
@@ -59,7 +57,6 @@ references:
 - 每个字段一行 `key: value`；中英文对用一行 `{ zh: "…", en: "…" }`，值一律用双引号。
 - `keywords` 用一行 `[a, b, c]`。
 - `references` 每项一行 `  - { file: 名称, note: "…" }`。
-- `logo` 用 `|-` 块，SVG 每行缩进两个空格。
 - 双引号里的值不要换行；需要写双引号时用 `\"`。
 
 ### 正文
