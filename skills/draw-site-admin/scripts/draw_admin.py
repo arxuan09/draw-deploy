@@ -28,7 +28,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -811,25 +811,24 @@ def find_provider(client, key):
 def cmd_providers_create(args):
     client = client_for(args)
     body = {
-        "key": args.key,
-        "name": args.name or args.key,
+        "name": args.name,
         "baseUrl": args.base_url,
         "description": args.description or "",
         "enabled": True,
     }
     if args.concurrency is not None:
         body["concurrencyLimit"] = args.concurrency
-    api_key = read_secret_option(args, "%s 的 API Key" % args.key)
+    api_key = read_secret_option(args, "%s 的 API Key" % args.name)
     if api_key:
         body["apiKey"] = api_key
-    client.post("providers/create", body)
+    key = client.post("providers/create", body).get("providerKey")
 
     def human(d):
-        print("已创建供应商 %s（%s）" % (args.key, args.base_url))
+        print("已创建供应商 %s，标识 %s（%s）" % (args.name, key, args.base_url))
         if not api_key:
-            print("还没设 API Key：请运营方在自己终端运行 providers set-key %s --secret" % args.key)
+            print("还没设 API Key：请运营方在自己终端运行 providers set-key %s --secret" % key)
 
-    emit(args, {"key": args.key, "apiKeySet": bool(api_key)}, human)
+    emit(args, {"key": key, "name": args.name, "apiKeySet": bool(api_key)}, human)
 
 
 def cmd_providers_set_key(args):
@@ -840,7 +839,6 @@ def cmd_providers_set_key(args):
     p = find_provider(client, args.key)
     body = {
         "providerKey": args.key,
-        "key": args.key,
         "name": p.get("name") or args.key,
         "baseUrl": p.get("baseUrl") or "",
         "description": p.get("description") or "",
@@ -872,7 +870,7 @@ def cmd_models_list(args):
         args,
         rows,
         lambda d: table(
-            d, [("id", "ID"), ("name", "名称"), ("kind", "类型"), ("enabled", "启用"), ("providerKey", "供应商"), ("slug", "上游模型名")]
+            d, [("id", "ID"), ("name", "名称"), ("kind", "类型"), ("enabled", "启用"), ("providerKey", "供应商"), ("modelKey", "上游模型名")]
         ),
     )
 
@@ -1201,9 +1199,8 @@ def build_parser():
 
     pv = group("providers", "AI 供应商")
     add(pv, "list", cmd_providers_list, "供应商列表")
-    sp = add(pv, "create", cmd_providers_create, "新建供应商；API Key 用 --secret 或 --from-env，不写在命令行")
-    sp.add_argument("key", help="供应商标识，小写字母数字和横线")
-    sp.add_argument("--name")
+    sp = add(pv, "create", cmd_providers_create, "新建供应商，标识由站点生成并打印出来；API Key 用 --secret 或 --from-env，不写在命令行")
+    sp.add_argument("--name", required=True)
     sp.add_argument("--base-url", required=True, help="上游 Base URL（必填，没有默认值）")
     sp.add_argument("--description")
     sp.add_argument("--concurrency", type=int, help="并发上限，0 为不限")
