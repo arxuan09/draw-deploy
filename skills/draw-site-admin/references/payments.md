@@ -24,6 +24,8 @@ draw_admin.py settings set epay_enabled=true
 
 异步通知地址由站点在下单时自动带上（`https://站点/api/billing/orders/notify`），不用在易支付后台配。请运营方用最小金额套餐实际付一笔，确认订单变成已支付、积分到账。
 
+运营方想让电脑端在本站直接弹二维码、不跳收银台时，打开 `epay_qrcode_enabled=true`（网关要支持 `mapi.php` 接口，不支持时自动退回跳转）。打开后再在电脑上实付一笔，确认弹出的是二维码。
+
 ## Stripe
 
 问：Publishable Key（`pk_…`）、Secret Key（`sk_…`）、Webhook Signing Secret（`whsec_…`）；用测试模式还是正式模式（`pk_test` / `pk_live` 要和 `sk_` 一致）。
