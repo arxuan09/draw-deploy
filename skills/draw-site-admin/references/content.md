@@ -8,11 +8,17 @@
 
 ```bash
 draw_admin.py call announcements/list
-draw_admin.py call announcements/create --data '{"title":"国庆期间充值八折","content":"10 月 1 日至 7 日，全部积分套餐八折。","enabled":true,"popup":false,"pinned":true}'
+draw_admin.py call announcements/create --data '{"title":"国庆期间充值八折","content":"10 月 1 日至 7 日，全部积分套餐八折。\n\n![活动海报](https://img.example.com/poster.jpg)","category":"event","coverUrl":"https://img.example.com/cover.jpg","actionLabel":"去充值","actionUrl":"/billing","enabled":true,"popup":false,"pinned":true}'
 draw_admin.py call announcements/toggle --data '{"id":"…","enabled":false}'
 ```
 
-`popup` 会在用户打开站点时弹窗，少用；`pinned` 置顶。下线用 `toggle`，不要删。
+- `category`：`event`（活动）、`update`（更新）、`maintenance`（维护）、`notice`（通知，默认）。
+- `content` 是 Markdown，5000 字以内；配图用 `![说明](https://图片直链)`。
+- `coverUrl` 可选，填 http(s) 图片直链，按 12:5 横图裁切显示；直链不经过本站存储，图床失效就不显示。
+- `actionLabel` + `actionUrl` 可选，要么都填要么都空：站内页面写 `/billing` 这样的路径，外部页面写完整的 https 地址。
+- `popup` 会在用户打开站点时弹窗，少用；`pinned` 置顶。下线用 `toggle`，不要删。
+
+运营方想自己在后台贴：把公告写成 Markdown，开头用 frontmatter 写 `title`、`category`、`pinned`、`popup`、`cover`、`button`、`link`（不需要的删掉），交给运营方在「公告管理 → 粘贴导入」里贴入，确认后创建。
 
 ## 文章（使用指南、场景方案、对比、博客）
 
