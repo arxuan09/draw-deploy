@@ -8,23 +8,25 @@
 draw_admin.py settings get site_currency
 ```
 
-人民币站一般用易支付；美元站用 Stripe；Waffo Pancake 两种站都能开（人民币站只有微信一次性付款）。问运营方已经开通了哪家，没开通的别替他决定。
+人民币站一般用易支付或支付宝 / 微信支付官方；美元站用 Stripe；Waffo Pancake 两种站都能开（人民币站只有微信一次性付款）。问运营方已经开通了哪家，没开通的别替他决定。
 
 下面的「回调地址」里，`https://站点` 指 `site_public_url`，先确认它填对了。
 
-## 易支付（epay）
+## 易支付、支付宝 / 微信支付官方（支付通道页）
 
-问：易支付网关地址、商户 PID、商户密钥；开支付宝还是微信。
+人民币站的易支付、支付宝开放平台、微信支付商户号都在网页后台「系统 → 支付通道」里配置，可以同时挂多个；同一种支付方式有几个通道时，用户结算时自己选线路。易支付网关支持的其它方式（QQ 钱包、云闪付等）在同一页的「自定义支付方式」里加：填易支付的调用值和显示名，再在易支付通道里勾上。
+
+**运维密钥不能新建、修改或删除支付通道**（换收款账户等于把钱转走），只能查看、启停、调顺序、测试凭据：
 
 ```bash
-draw_admin.py settings set epay_base_url=https://pay.example.com epay_pid=1001 epay_enable_alipay=true epay_enable_wxpay=true
-draw_admin.py settings set epay_key --secret
-draw_admin.py settings set epay_enabled=true
+draw_admin.py call payment-channels/list
+draw_admin.py call payment-channels/test --data '{"id":"通道 id"}'
+draw_admin.py call payment-channels/toggle --data '{"id":"通道 id","enabled":true}'
 ```
 
-异步通知地址由站点在下单时自动带上（`https://站点/api/billing/orders/notify`），不用在易支付后台配。请运营方用最小金额套餐实际付一笔，确认订单变成已支付、积分到账。
+新通道请运营方在网页后台自己填：易支付要网关地址、商户 PID、商户密钥；支付宝要 AppID、应用私钥、支付宝公钥（或三张证书）；微信支付要商户号、AppID、API 证书序列号、商户私钥、APIv3 密钥、微信支付公钥和公钥 ID。回调地址站点下单时自动带上，不用在支付平台配；微信支付要在商户平台配 H5 支付域名和 JSAPI 支付授权目录（后台页面底部有，可一键复制）。
 
-运营方想让电脑端在本站直接弹二维码、不跳收银台时，打开 `epay_qrcode_enabled=true`（网关要支持 `mapi.php` 接口，不支持时自动退回跳转）。打开后再在电脑上实付一笔，确认弹出的是二维码。
+填好后用 `payment-channels/test` 测一次，再请运营方用最小金额套餐实际付一笔，确认订单变成已支付、积分到账。
 
 ## Stripe
 

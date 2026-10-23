@@ -28,7 +28,7 @@ draw_admin.py call refunds/review --data '{"refundId":"…","approve":false,"rej
 draw_admin.py call refunds/complete --data '{"refundId":"…","refundTradeNo":"支付平台的退款单号"}' --yes
 ```
 
-Stripe 订单用 `refunds/stripe` 原路退回；其它通道要运营方先在支付平台后台退款，再用 `refunds/complete` 填退款单号。`orders/mark-paid`（手动标记已支付并发积分）只在运营方确认钱已经到账、但回调丢了时用，要带支付平台的交易号。
+Stripe、支付宝官方、微信支付官方的订单用 `refunds/to-source` 原路退回（微信退款先受理、稍后到账，站点会自动跟进，失败时给管理员发告警）；易支付等其它通道要运营方先在支付平台后台退款，再用 `refunds/complete` 填退款单号。`orders/mark-paid`（手动标记已支付并发积分）只在运营方确认钱已经到账、但回调丢了时用，要带支付平台的交易号。
 
 ## 卡密与优惠券
 
