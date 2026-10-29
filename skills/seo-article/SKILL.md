@@ -107,7 +107,7 @@ faq:
 
 - 不要再写一遍 H1，页面模板会渲染 title。
 - 文末不要多一行 `---`。
-- 站内链接：中文稿用 `/guides/x`，英文稿用 `/en/guides/x`。
+- 站内链接：和站点主语言（`site_default_locale`）相同的稿件不带前缀（`/guides/x`），其它语言带语言前缀（大陆站的英文稿 `/en/guides/x`，海外站的中文稿 `/zh/guides/x`）。
 - 图片用 `![说明](https://…)` 指向完整 URL。
 - 原始 HTML 不会被渲染，表格用 Markdown 表格。
 ```

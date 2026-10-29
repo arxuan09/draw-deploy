@@ -23,12 +23,13 @@ import os
 import socket
 import ssl
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -148,6 +149,28 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 _OPENER = urllib.request.build_opener(_NoRedirect(), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
 
+# Gateway / CDN errors (Cloudflare's 52x and the generic 502–504). The site
+# itself never answers with these; they mean the hop in front of it failed.
+_EDGE_ERRORS = {
+    502: "网关收到源站的无效响应",
+    503: "源站暂时不可用",
+    504: "网关等源站超时",
+    520: "Cloudflare 收到源站的空响应或连接被源站重置",
+    521: "Cloudflare 连不上源站（源站拒绝连接）",
+    522: "Cloudflare 连接源站超时",
+    523: "Cloudflare 找不到到源站的路由",
+    524: "源站接受了连接，但处理超过 100 秒没有返回",
+    525: "Cloudflare 与源站 SSL 握手失败",
+    526: "源站证书无效（Cloudflare SSL 模式为 Full strict）",
+}
+# Failures where the request provably never reached the site's handlers, so
+# retrying cannot apply a write twice.
+_NOT_DELIVERED = {521, 522, 523, 525, 526}
+# Last path segments of admin routes that only read. Anything else may write,
+# and an ambiguous failure (520 / 524 / timeout) on it is reported, not retried.
+_READ_ONLY_TAILS = {"list", "get", "catalog", "whoami", "doctor", "snapshot", "history", "query", "presets", "endpoints"}
+_RETRIES = 3
+
 
 class Client:
     def __init__(self, base_url, key, timeout=60):
@@ -200,6 +223,28 @@ class Client:
         path = path.strip().lstrip("/")
         if path.startswith("api/admin/"):
             path = path[len("api/admin/") :]
+        read_only = self._is_read_only(path)
+        for attempt in range(_RETRIES + 1):
+            try:
+                return self._send_once(path, data, headers)
+            except CLIError as e:
+                delivered = e.params.get("_delivered", True)
+                retry = attempt < _RETRIES and e.exit_code in (EXIT_UPSTREAM, EXIT_TIMEOUT) and (read_only or not delivered)
+                if retry:
+                    print("（%s，%d 秒后重试）" % (e.message, 2 ** (attempt + 1)), file=sys.stderr)
+                    time.sleep(2 ** (attempt + 1))
+                    continue
+                e.params.pop("_delivered", None)
+                if not read_only and delivered and e.code in ("cli.timeout", "cli.edge"):
+                    e.message += "。这是写操作，请求可能已经生效：先用 list / get 核对结果，确认没生效再重试，避免重复创建"
+                raise
+
+    def _is_read_only(self, path):
+        if self._catalog and path in self._catalog:
+            return self._catalog[path].get("scope") == "read"
+        return path.rsplit("/", 1)[-1] in _READ_ONLY_TAILS
+
+    def _send_once(self, path, data, headers):
         url = "%s/api/admin/%s" % (self.base_url, path)
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         try:
@@ -222,10 +267,32 @@ class Client:
             reason = e.reason
             if isinstance(reason, (socket.timeout, TimeoutError)):
                 raise CLIError("请求超时：%s" % url, code="cli.timeout", exit_code=EXIT_TIMEOUT)
-            raise CLIError("连不上站点 %s：%s" % (self.base_url, reason), code="cli.network", exit_code=EXIT_UPSTREAM)
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                raise CLIError(
+                    "站点证书校验失败（%s）：站点地址可能填错，或这个主机名没有走 CDN、直接露出了源站证书" % reason.verify_message,
+                    code="cli.tls",
+                    exit_code=EXIT_FAIL,
+                )
+            # Refused / unresolvable: nothing was sent, so a retry is safe.
+            undelivered = isinstance(reason, (ConnectionRefusedError, socket.gaierror))
+            raise CLIError(
+                "连不上站点 %s：%s" % (self.base_url, reason),
+                code="cli.network",
+                exit_code=EXIT_UPSTREAM,
+                params={"_delivered": not undelivered},
+            )
         try:
             payload = json.loads(raw.decode("utf-8") or "{}")
         except ValueError:
+            payload = None
+        if status in _EDGE_ERRORS and not (isinstance(payload, dict) and "ok" in payload):
+            raise CLIError(
+                "HTTP %d：%s" % (status, _EDGE_ERRORS[status]),
+                code="cli.edge",
+                exit_code=EXIT_UPSTREAM,
+                params={"status": status, "_delivered": status not in _NOT_DELIVERED},
+            )
+        if payload is None:
             snippet = raw[:200].decode("utf-8", "replace")
             raise CLIError(
                 "站点返回的不是 JSON（HTTP %d）：%s" % (status, snippet),
@@ -701,8 +768,12 @@ def cmd_settings_set(args):
             key = item.strip()
             if key not in index:
                 raise unknown_key(key, index)
-            if len(args.assignments) != 1:
-                raise CLIError("--secret / --from-env / --from-file 一次只能设一个键", exit_code=EXIT_USAGE)
+            # One value source (--secret / --from-env / --from-file), so one
+            # bare key; it may ride with plain key=value pairs, which then go
+            # in the same save — a login channel such as SMTP must be filled
+            # in at once, since a key cannot touch it again once it is set.
+            if sum(1 for a in args.assignments if "=" not in a) != 1:
+                raise CLIError("--secret / --from-env / --from-file 一次只能设一个键（可以和其它 键=值 写在同一条命令里）", exit_code=EXIT_USAGE)
             values[key] = coerce(index[key], read_single_value(args, key))
     changes = []
     for key, new in values.items():

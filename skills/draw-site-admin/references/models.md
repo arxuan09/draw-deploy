@@ -52,6 +52,46 @@ draw_admin.py call models/update --data-file model.json    # 改 name、modelKey
 | `upstreamCostCents` | 上游成本（分），只用于成本看板 |
 | `hiddenFromUsers` | 只给 Agent 或内部用、不在用户模型列表里显示 |
 
+### 新站：没有可复制的模型
+
+`models presets` 只给能力（模型 Key、质量档、比例、参考图上限、能否扩图 / 透明 / 拆分），不给价格；把它和下面三种骨架拼起来就是完整请求体。没列出的字段照 `describe models/create` 补默认值（布尔 false、数组 []、对象 {}）。
+
+OpenAI 表单（`formTemplate: openai` 的预设不带 `endpoint`：官方或完整透传的中转用 `openai-image-generations`，会拒绝 `response_format` 的中转用 `openai-image-generations-no-format`）：
+
+```json
+{"providerKey":"p-xxxxxx","endpointKey":"openai-image-generations","kind":"image","name":"GPT Image 2.5 Flare",
+ "modelKey":"gpt-image-2.5-flare","creditCost":5,
+ "imageQualities":[{"quality":"auto","credits":12},{"quality":"low","credits":3},{"quality":"medium","credits":5},{"quality":"high","credits":12},{"quality":"xhigh","credits":22},{"quality":"max","credits":50}],
+ "imageSizes":[{"size":"auto","label":"Auto"},{"size":"1:1"},{"size":"16:9"},{"size":"9:16"}],
+ "imageSizeCredits":{"1K":0,"2K":10,"4K":25,"auto":0},
+ "outpaintEnabled":true,"customSizeEnabled":true,"transparentBackgroundEnabled":true,"maxReferenceImages":16,"enabled":true}
+```
+
+档位表单（Nano Banana、Seedream、万相，预设带 `endpoint`）：质量档就是分辨率档，价格写在 `qualityCredits`，比例写进 `imageSizes`：
+
+```json
+{"providerKey":"p-xxxxxx","endpointKey":"gemini-generate-content","kind":"image","name":"Nano Banana 2.1",
+ "modelKey":"gemini-nano-banana-2.1","creditCost":8,
+ "qualityLevels":["1K","2K","4K"],"qualityCredits":{"1K":8,"2K":12,"4K":25},
+ "imageSizes":[{"size":"1:1"},{"size":"16:9"}],"maxReferenceImages":14,
+ "thinkingLevels":["minimal","medium","high"],"thinkingDefault":"medium","enabled":true}
+```
+
+图层拆分模型（Seedream 5.0）再加 `"layersEnabled":true,"layersCreditCost":10`，只给拆分用就加 `"hiddenFromUsers":true`，然后把 `layers_model_id` 设成它。
+
+视频（`videoPresets` 带 `endpointKey`）：时长和比例由端点固定，传空；`resolutions` 每行填每秒积分，`capabilities` 原样拷进 `videoCapabilities`（去掉值为 false / 0 / 空的项即可）：
+
+```json
+{"providerKey":"p-xxxxxx","endpointKey":"ark-video-seedance","kind":"video","name":"Seedance 2.0 Fast",
+ "modelKey":"doubao-seedance-2-0-fast-260128","creditCost":0,
+ "videoDurations":[],"videoDurationRange":{},"videoAspectRatios":[],
+ "videoResolutionMap":[{"resolution":"480p","creditsPerSecond":15},{"resolution":"720p","creditsPerSecond":30}],
+ "videoCapabilities":{"textToVideo":true,"firstFrame":true,"lastFrame":true,"maxReferenceImages":9,"maxReferenceVideos":3,"maxReferenceAudios":3,"defaultDuration":5,"defaultResolution":"720p","blocksRealFace":true},
+ "videoBadges":["omni_reference","first_last_frame"],"videoBillingMode":"per_second","enabled":true}
+```
+
+`models/create` 不是幂等的：网络错误后先 `models list` 看是否已经建上，再决定重试。Logo 写 `logoSvg`（SVG 源码，单色图标会跟随主题色）；推荐 `@lobehub/icons-static-svg` 的图标，彩色版优先，去掉 `width="1em" height="1em"`。
+
 每个模型的质量档、分辨率、参考图上限：https://raw.githubusercontent.com/arxuan09/draw-deploy/main/model-config-reference.md 。定价问运营方，可以按「上游成本 × 期望毛利 ÷ 每积分售价」给建议。
 
 建好后：

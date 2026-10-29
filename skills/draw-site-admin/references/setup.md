@@ -76,13 +76,16 @@ draw_admin.py call packages/create --data '{"name":"入门包","credits":500,"pr
 
 没有发信，用户收不到验证码、找回密码邮件。问：SMTP 主机、端口、是否 TLS、用户名、密码、发件人邮箱和名称。
 
+**整组（含密码）必须在同一条命令里保存**：SMTP 主机一旦填上，发信这组设置密钥就不能再改了（防止有人把找回密码邮件导走），分两条命令先填主机、再设密码，第二条会被拒（`errors.apiKey.channelLocked`）。密码用 `--from-env`（或运营方在终端用 `--secret`），和其它 `键=值` 写在一起：
+
 ```bash
-draw_admin.py settings set mail_smtp_host=smtp.example.com mail_smtp_port=465 mail_smtp_secure=true mail_smtp_user=no-reply@example.com mail_from_email=no-reply@example.com mail_from_name=某某绘图
-draw_admin.py settings set mail_smtp_password --secret
+export SMTP_PW=…        # 运营方在自己终端；或运营方把密码贴进对话时由你 export
+draw_admin.py settings set mail_smtp_host=smtp.example.com mail_smtp_port=465 mail_smtp_secure=true mail_smtp_user=no-reply@example.com mail_from_email=no-reply@example.com mail_from_name=某某绘图 mail_smtp_password --from-env SMTP_PW --dry-run
+draw_admin.py settings set mail_smtp_host=smtp.example.com mail_smtp_port=465 mail_smtp_secure=true mail_smtp_user=no-reply@example.com mail_from_email=no-reply@example.com mail_from_name=某某绘图 mail_smtp_password --from-env SMTP_PW
 draw_admin.py settings test-mail 运营方邮箱
 ```
 
-SMTP 主机一旦填上，发信这组设置密钥就不能再改了（防止有人把找回密码邮件导走），所以一次填对：保存前先 `--dry-run` 给运营方核对。之后要改请运营方去网页后台。
+保存前先 `--dry-run` 给运营方核对，一次填对；拿不准密码（比如末尾带不带标点）就先用 Python `smtplib` 登录一次验证。之后要改请运营方去网页后台。短信、微信、QQ 这几组同理，整组一条命令。
 
 请运营方确认收到（含垃圾箱）。常见问题：465 端口要 `mail_smtp_secure=true`，587 通常为 `false`（STARTTLS）；QQ / 163 邮箱的密码是「授权码」不是登录密码；发件人邮箱要和 SMTP 账号一致。
 
