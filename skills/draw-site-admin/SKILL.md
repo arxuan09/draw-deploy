@@ -53,6 +53,8 @@ Draw Studio 是运营方自己部署的 AI 绘画站点。后台有二十多个�
 
 登录和找回密码用到的渠道——发信（SMTP）、短信、微信公众号登录、QQ 登录、站点公开 URL——密钥**只能在它们还空着时填写**，已经配置过的改不了（`errors.apiKey.channelLocked`）；已有的 OAuth 登录渠道也改不了，新建的渠道不能开「按邮箱关联账号」（`errors.apiKey.oauthLocked`）。这是为了让偷到密钥的人没法把找回密码邮件导到自己手里。遇到这两个错误就请运营方在网页后台改，并告诉他具体改哪几项。每次用密钥填写这些渠道，站点都会给所有管理员发站内信和邮件，提前告诉运营方会收到。
 
+**支付配置密钥一概不能写**，空着也不行：系统设置「支付」组的全部设置（站点币种、Stripe / Waffo / 易支付的账户和密钥、Webhook 签名密钥和公钥、Waffo 环境和基础商品、所有支付开关）会被拒（`errors.apiKey.paymentSettingLocked`），支付通道和自定义支付方式的新建、修改、启停、排序、删除也调不了（`errors.apiKey.routeDenied`）。钱收到谁的账户、开哪个通道，只能运营方本人在网页后台定。所以支付这一步你只做三件事：告诉运营方要准备什么、在后台哪一页填、对方后台的 Webhook 怎么配（见 `references/payments.md`）；他填完后你用 `doctor`、`settings/stripe-check`、`payment-channels/test` 验证，Waffo 的基础商品可以替他用 `settings/waffo-create-products` 建。不要让运营方把支付密钥贴给你。
+
 ## 二、工作流
 
 1. **先 `draw_admin.py whoami`**：确认连的是哪个站、签发人是谁、有哪些档位。连错站比什么都糟。本机登录过不止一个站（`draw_admin.py profiles`）时，每条命令都带 `--profile <站>`：不带就落到默认站，改的可能是另一个正在运营的站。
@@ -121,7 +123,7 @@ draw_admin.py logs query [--level error] [--since 6h] [--keyword …]
 
 **动钱、动用户、动全站的事先确认。** 发积分、退款、优惠券、卡密、取消订阅、重置密码、解绑、群发、删除任何东西，CLI 会以退出码 8 停下（`cli.confirmRequired`）。这时先把**完整清单**列给运营方——对象、数量、总额、影响——明确同意后才带 `--yes` 重跑。批量操作先报总数和总额。
 
-**密钥类设置不经过对话。** SMTP 密码、存储 Secret、支付私钥、供应商 API Key 这类设置，`settings set 键=值` 会被拒绝（`cli.secretOnCommandLine`）。请运营方在自己的终端运行 `draw_admin.py settings set <键> --secret`；或者让他先 `export` 一个环境变量，你再用 `--from-env`。运营方坚持把值贴进对话的，照用（写进临时环境变量后 `--from-env`），用完不要在回复里复述。读设置时密钥类只显示「已设置 / 未设置」，你也读不到原值。
+**密钥类设置不经过对话。** SMTP 密码、存储 Secret、供应商 API Key 这类设置，`settings set 键=值` 会被拒绝（`cli.secretOnCommandLine`）。请运营方在自己的终端运行 `draw_admin.py settings set <键> --secret`；或者让他先 `export` 一个环境变量，你再用 `--from-env`。运营方坚持把值贴进对话的，照用（写进临时环境变量后 `--from-env`），用完不要在回复里复述。读设置时密钥类只显示「已设置 / 未设置」，你也读不到原值。
 
 **改设置先看差异。** 不确定的改动先 `--dry-run`，把「旧值 → 新值」给运营方看。
 
@@ -130,7 +132,7 @@ draw_admin.py logs query [--level error] [--since 6h] [--keyword …]
 **改已在使用的配置先说后果**：
 - 存储（`oss_*`）：换桶或换域名会让老图打不开，换存储走后台「存储迁移」，不要直接改设置。
 - 站点公开 URL（`site_public_url`）：支付回调、邮件链接、OAuth 回调都跟着变，要同步改第三方后台。
-- 站点币种（`site_currency`）：上线后不要改，已有套餐价格和历史订单不会换算。
+- 站点币种（`site_currency`）：密钥改不了。运营方要改时提醒他：上线后不要改，已有套餐价格和历史订单不会换算。
 
 **不编造站点事实。** 站名、备案号、公司主体、联系方式、客服微信、协议里的运营主体，一律问运营方，不要用示例值或别的站的信息补。
 
@@ -140,5 +142,6 @@ draw_admin.py logs query [--level error] [--since 6h] [--keyword …]
 - 默认管理员密码（`admin-password` 检查项）——请本人登录后在个人中心修改。
 - 反向代理地址（`trusted-proxies`）——是部署文件里的环境变量 `TRUSTED_PROXIES`，要改 docker-compose 后重启。
 - 签发、吊销运维密钥——网页后台「系统 → 运维密钥」。
+- 支付配置（币种、收款账户和密钥、支付开关、支付通道）——网页后台「系统设置 → 支付」和「系统 → 支付通道」，见 `references/payments.md`。
 
 **收尾**：一轮配置做完，用一小段话告诉运营方改了什么、还差什么（照 `doctor` 的结果）、哪些需要他本人去做。

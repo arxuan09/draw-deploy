@@ -70,7 +70,7 @@ draw_admin.py call packages/create --data '{"name":"入门包","credits":500,"pr
 
 ## payment 支付通道
 
-见 `references/payments.md`。
+密钥写不了任何支付设置，也动不了支付通道：币种、收款账户、密钥和支付开关都由运营方在网页后台填（`doctor` 这一项给出的「后台」页面）。你告诉他要准备什么、Webhook 怎么配，他填完你来验证。逐家怎么做见 `references/payments.md`。
 
 ## mail 发信
 
