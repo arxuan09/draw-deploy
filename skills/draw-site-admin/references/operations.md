@@ -57,3 +57,16 @@ draw_admin.py call users/unbind --data '{"userId":"…","binding":"wechat"}' --y
 ```
 
 管理员账号一律碰不了（`errors.apiKey.adminTarget`），请运营方本人处理。
+
+## 恢复用户的画布
+
+用户说画布内容没了、被清空、少了一大半时，先别让他继续在那个画布上操作。站点会在保存时自动留历史版本：一次删掉一半以上（原来至少 5 个对象）、清空、「以当前页面为准」覆盖时都会留，平时编辑每 30 分钟最多留一个。每个项目平时编辑的版本最多 12 个、删改类的重要版本最多 10 个，各挤各的，保留 30 天。
+
+```bash
+draw_admin.py users find someone@example.com
+draw_admin.py call project-revisions/projects --data '{"userId":"…"}'         # 最近更新的项目和各自的历史版本数
+draw_admin.py call project-revisions/list --data '{"projectId":"…"}'           # 每个版本的时间、对象数、原因
+draw_admin.py call project-revisions/restore --data '{"projectId":"…","revisionId":"…"}' --yes
+```
+
+用户给的链接里 `projectId=` 后面就是项目 ID。管理员账号的画布密钥看不了也恢复不了（`errors.apiKey.adminTarget`），请运营方在网页后台处理。把候选版本（时间、对象数、原因）列给运营方，由他和用户确认要回到哪一个。恢复前当前内容会先存成一个 `before-restore` 版本，恢复错了再对它 `restore` 一次就回来了。恢复后请用户刷新页面；开着的旧页面再保存会弹冲突提示，让他选「加载最新内容」，不要选「以当前页面为准」。

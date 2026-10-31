@@ -78,6 +78,8 @@ docker compose up -d
 
 Nginx 的 `client_max_body_size` **默认只有 1M**，套在前面而不改这一项，用户传稍大的图就会收到 **413**（nginx 自己的 HTML 错误页，不是本系统的提示），后台把上限调多大都没用。
 
+**画布保存也受这一项限制。** 画布每次自动保存都把整张画布的 JSON 一次发给 `/api/projects/save-snapshot`，元素多的画布轻松超过 1M；被拦下时页面左下角会显示「未保存」，内容只留在用户本机。按上表至少配 `24m`（程序本身接受到 64M），画布保存就不会再被拦。
+
 > 2.21.0 之前上传走的是 base64，请求体会膨胀约 4/3 倍。若你当时按那个比例放宽过（例如为 20MB 上限配了 `32m`），现在**不需要调小**，留着只是余量更足。
 
 判断是谁拦的：**413 + HTML 错误页 = 反向代理**；**400 + `{"ok":false,"error":"Image is too large (max N MB)."}` = 本系统的上限**。
@@ -144,6 +146,7 @@ docker compose pull && docker compose up -d
 | 启动时提示需设置 `JWT_SECRET` / `SETTINGS_ENCRYPTION_KEY` | `.env` 中这两项为空。可用 `deploy.sh` 自动生成，或手动填入随机密钥 |
 | 注册收不到验证码、接口报 503 | 未配置 SMTP 或 `site_public_url`，请到后台「邮件」「通用」补全 |
 | 上传图片报 413 / nginx 错误页 | 反向代理的 `client_max_body_size` 太小（默认 1M）。图片经 base64 膨胀约 4/3 倍，需按「上传大小上限与反向代理」一节放开 |
+| 画布左下角一直显示「未保存」，提示画布太大 | 同上：画布保存请求被反向代理的 `client_max_body_size` 拦下（413），按「上传大小上限与反向代理」一节放开 |
 | 上传图片提示「Image is too large」 | 本系统的上限，到后台「存储 → 上传大小上限(MB)」调整 |
 | 端口被占用 | 修改 `.env` 的 `APP_PORT` 后执行 `./update.sh` |
 | 删除部署目录后数据丢失 | 数据位于 `./data`，删目录即丢失，请定期使用 `mysqldump` 备份 |

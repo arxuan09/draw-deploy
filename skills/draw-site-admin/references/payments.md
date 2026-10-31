@@ -55,14 +55,22 @@ draw_admin.py call settings/stripe-check
 填完后基础商品可以你来建（用的是运营方填的账户，在他的店铺里建）：
 
 ```bash
-draw_admin.py call settings/waffo-create-products     # 在 Waffo 创建一次性 / 月付 / 年付基础商品，写回 waffo_product_*
+draw_admin.py call settings/waffo-create-products     # 在 Waffo 创建一次性 / 月付 / 年付基础商品，写回 waffo_product_*，再登记当前环境的 Webhook
 ```
+
+每次调用都会新建一套商品。商品建好后它接着在当前环境（`waffo_environment`）登记 Webhook，结果在返回的 `result.webhook` 里。只缺 Webhook（商品已有）时别再建商品，单独登记：
+
+```bash
+draw_admin.py call settings/waffo-register-webhook    # 只登记当前环境的 Webhook，不建商品；结果在 webhook 里
+```
+
+两者的 Webhook 结果相同：`added`（新登记）、`updated`（地址已在，补上了缺的事件，运营方自己加的事件保留）、`present`（已齐全）、`failed`（`message` 写原因；建商品时商品照样已保存）。只看、只改地址正好是本站回调地址的那条，别的 Webhook 不动。登记要求站点公开地址是 https，且 API 私钥所属商户是店铺的 owner 或 admin；店铺最多 20 个 Webhook。
 
 建好后请运营方在同一页打开「Waffo Pancake 开关」。
 
-请运营方在 Waffo 后台配置 Webhook：地址 `https://站点/api/billing/orders/waffo-webhook`，订阅 `order.completed`，以及 `subscription.activated`、`subscription.payment_succeeded`、`subscription.renewed`、`subscription.past_due`、`subscription.recovered`、`subscription.canceling`、`subscription.uncanceled`、`subscription.canceled`、`refund.succeeded`、`refund.failed`（后台「原路退款」靠后两个确认到账）。测试和生产各配一次。
+`failed` 时请运营方在 Waffo 后台 → Settings → Webhooks 手动添加：地址 `https://站点/api/billing/orders/waffo-webhook`，订阅 `order.completed`、`subscription.activated`、`subscription.payment_succeeded`、`subscription.renewed`、`subscription.recovered`、`subscription.past_due`、`subscription.canceling`、`subscription.uncanceled`、`subscription.canceled`、`refund.succeeded`、`refund.failed`（后台「原路退款」靠后两个确认到账）。测试和生产各一条。`doctor` 的 payment 一项会查当前环境有没有这条 Webhook、事件全不全，缺了就跑 `settings/waffo-register-webhook`。
 
-测试环境任何人都能用 Waffo 公开的测试卡付款，上线前务必切到 `prod`：运营方在网页后台换成生产环境和生产私钥，之后你再跑一次 `settings/waffo-create-products`。人民币站的 Waffo 只有微信，单价和同一买家每月累计都封顶 ¥1,000，只能卖一次性套餐。
+测试环境任何人都能用 Waffo 公开的测试卡付款，上线前务必切到 `prod`：运营方在网页后台换成生产环境和生产私钥，之后你再跑一次 `settings/waffo-create-products`（建生产商品，同时登记生产环境的 Webhook）。人民币站的 Waffo 只有微信，单价和同一买家每月累计都封顶 ¥1,000，只能卖一次性套餐。
 
 ## 验证
 
