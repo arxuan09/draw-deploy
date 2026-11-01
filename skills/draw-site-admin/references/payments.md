@@ -33,20 +33,39 @@ draw_admin.py call payment-channels/test --data '{"id":"通道 id"}'
 
 ## Stripe
 
-请运营方准备：Publishable Key（`pk_…`）、Secret Key（`sk_…`）、Webhook Signing Secret（`whsec_…`）；测试模式还是正式模式（`pk_test` / `pk_live` 要和 `sk_` 一致）。
+请运营方准备：Publishable Key（`pk_…`）和 Secret Key（`sk_…`）；测试模式还是正式模式（`pk_test` / `pk_live` 要和 `sk_` 一致）。用受限密钥（`rk_…`）时要开的权限：Checkout Sessions、Subscriptions、Refunds、Customer portal、Webhook Endpoints 写；Invoices、Invoice Payments、Charges、Payment Intents、Customers、Disputes 读；**账户信息（Account）读，必须开**——本站靠它认出订阅在哪个 Stripe 账户上，读不到时找不到的订阅一律不当作已结束，只告警。
 
-请他在 Stripe 后台「Developers → Webhooks」新建端点：
+本站所有 Stripe 请求固定用 API 版本 `2026-10-28.endive`（随官方 Go SDK 锁定），不受 Stripe 账户默认版本影响。
 
-- 地址：`https://站点/api/billing/orders/stripe-webhook`
-- 事件：`checkout.session.completed`、`invoice.paid`、`invoice.payment_failed`、`customer.subscription.updated`、`customer.subscription.deleted`、`charge.dispute.created`、`charge.refunded`
+请他在网页后台「系统设置 → 支付」填两个密钥、打开「Stripe 开关」并保存，再点 Webhook Secret 下面的「登记回调地址」：本站用已保存的密钥在 Stripe 建端点 `https://站点/api/billing/orders/stripe-webhook`（固定版本、事件齐全），签名密钥直接存进 `stripe_webhook_secret`、端点 ID 记在 `stripe_webhook_endpoint_id`，不经过浏览器。站点公开地址必须是 https（只有测试密钥可以用 localhost）。这一步会写支付设置，所以只能运营方在网页后台点，运维密钥调不了。
 
-然后在网页后台「系统设置 → 支付」填三个密钥、打开「Stripe 开关」并保存。填完你来验证：
+- 已保存的签名密钥所属的那个端点（登记时记下的 ID）在本站地址上：只补缺少的事件并启用。手动填的密钥没有记 ID，只认这个地址上唯一一个启用的端点。别的端点（包括停用的旧端点）一律不会被重新启用。
+- 这个地址上有端点，但本站的签名密钥不是它的：请运营方在 Stripe 后台 Workbench → Webhooks 选中该端点，点「Click to reveal」复制密钥填进「Webhook Secret」（不用 Roll；只有怀疑密钥泄露时才 Roll）。
+- 本站还没有这个地址的端点，但已存过签名密钥，或本站的端点在别的地址（换过站点地址）：按钮不会自己新建，会列出旧端点，请运营方确认后点「新建端点并替换」。
+- 要对齐 API 版本、签名密钥填错了（`stripe-check` 报验签连续失败），也点「新建端点并替换」：本站新建端点、保存新密钥、停用旧端点（不删除）。旧端点上还在等待重试的事件随之丢失：其中付款和续费会被每 10 分钟的对账和每小时的订阅同步补上，但拒付和 `refund.failed`、`refund.updated` 补不回来，替换前后要到 Stripe 后台看一眼有没有未处理的拒付和失败退款。停用失败的旧端点会列在页面上，要手动停用。
+
+不用按钮、手动建端点时：Stripe 后台 Workbench → Webhooks 新建端点，地址同上，API 版本选 `2026-10-28.endive`，勾选这些事件：
+
+`checkout.session.completed`、`invoice.paid`、`invoice.payment_failed`、`customer.subscription.updated`、`customer.subscription.deleted`、`charge.dispute.created`、`charge.dispute.updated`、`charge.dispute.funds_withdrawn`、`charge.dispute.closed`、`charge.refunded`、`refund.failed`、`refund.updated`
+
+然后点「Click to reveal」把签名密钥（`whsec_…`）填进「Webhook Secret」。
+
+请运营方在 Stripe 后台再设这几项（本站代替不了）：
+
+- Billing → Revenue recovery → Retries：开 Smart Retries；全部重试失败后选「取消订阅」。不要选「暂停」，也不要手动暂停 / 恢复订阅。本站不支持暂停。暂停的订阅不再发积分，用户看到「已暂停」，管理员收到告警；恢复时 Stripe 开的是按比例计费的账单，本站只记收款不发积分，要管理员手动处理。
+- 不要把取消日期定在周期中间（按比例计费的账单同样要人工处理）；在本站取消就是到期取消（逾期或暂停时立即结束）。
+- Settings → Customer emails：打开扣款失败邮件、需要验证（3DS）时的邮件和付款成功收据。续费要验证时只靠这封邮件提醒买家。
+- 销售税：Stripe 直收时运营方是卖方，开不开 Stripe Tax 由他定。
+
+填完你来验证：
 
 ```bash
 draw_admin.py call settings/stripe-check
 ```
 
-`stripe-check` 会去 Stripe 核对密钥、Webhook 端点和事件订阅，列出问题；有问题告诉运营方改哪一项。全部通过后请运营方实际付一笔。自动续费订阅套餐（`billingInterval` 为 `month` / `year`）只走 Stripe 和 Waffo。
+`stripe-check` 会去 Stripe 核对密钥、Webhook 端点、事件订阅和启用状态，并给出三个版本：本站固定的、端点的、账户默认的。`problems` 必须改，受限密钥没有 Account 读权限也算在里面。`notes` 里的版本不一致不影响收款，要对齐请运营方点「新建端点并替换」（端点建好后版本改不了）。`doctor` 的 payment 一项也会查这条端点。全部通过后请运营方实际付一笔。自动续费订阅套餐（`billingInterval` 为 `month` / `year`）只走 Stripe 和 Waffo。
+
+本站对拒付和退款的处理，运营方要知道：拒付问询（Stripe 里状态以 `warning_` 开头）只通知管理员，订阅照常、积分不收回；升级为正式拒付后才停订阅、收回积分；结案时通知胜诉或败诉，胜诉不会自动恢复积分，要管理员手动补发。后台「原路退款」几天后在 Stripe 失败（`refund.failed`）或被取消（`refund.updated`）时，钱回到 Stripe 余额，本站通知管理员。要换其他方式退给买家，退好后在后台退款列表点「已另行退款」：Stripe 一般不再接受退到退款失败过的卡，「重试原路退款」多半会被拒（页面会显示 Stripe 的原话）。已收回的积分不退回。
 
 ## Waffo Pancake
 
