@@ -140,7 +140,7 @@ draw_admin.py logs query [--level error] [--since 6h] [--keyword …]
 
 **做不了的事交还给运营方**：
 - 默认管理员密码（`admin-password` 检查项）——请本人登录后在个人中心修改。
-- 真实客户端 IP（`trusted-proxies`）——要改反代配置或部署文件里的环境变量 `TRUSTED_PROXIES` 后重启，见 `references/setup.md`。
+- 真实客户端 IP（`trusted-proxies`）——请运营方用管理员账号打开 `/diag/ip` 看建议，再到「系统设置 → 真实 IP」填写，见 `references/setup.md`。
 - 签发、吊销运维密钥——网页后台「系统 → 运维密钥」。
 - 支付配置（币种、收款账户和密钥、支付开关、支付通道）——网页后台「系统设置 → 支付」和「系统 → 支付通道」，见 `references/payments.md`。
 

@@ -133,10 +133,10 @@ draw_admin.py settings set prompt_review_enabled=true prompt_review_model_id=<�
 
 ## trusted-proxies 反向代理地址
 
-同机或内网的反代和 Cloudflare 不用配置，服务端自动识别。体检报警时按提示处理，都要运营方改部署：
+同机或内网的反代和 Cloudflare 不用配置，服务端自动识别。体检报警时按提示处理：
 
-- 拿到的仍是内网地址：反代没传用户地址，Nginx 要有 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`（Caddy 默认就传）；或者 `TRUSTED_PROXIES` 填了却没包含这个反代，把它清空或补上。
-- 来自不在名单里的公网地址，或识别出的 IP 其实是自己的反代 / CDN 节点：在部署目录 `.env` 里加 `TRUSTED_PROXIES=<它的地址或网段>`（只填公网反代，内网和 Cloudflare 会自动信任），然后重启。
+- 拿到的仍是内网地址：反代没传用户地址，Nginx 要有 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`（Caddy 默认就传）。这要运营方改反代。
+- 来自公网地址，或识别出的 IP 其实是自己的反代 / CDN 节点：请运营方用管理员账号在浏览器打开 `/diag/ip`，页面会列出请求经过的地址并给出建议，再到网页后台「系统设置 → 真实 IP」照着填（`realip_mode` 选 proxies / hops / header，及对应的 `realip_trusted_proxies`、`realip_proxy_hops`、`realip_client_header`、`realip_secret`）。改完立即生效，不用重启。运维密钥只能在 `realip_mode` 还是 auto 时写这几项，填过之后只能在网页后台改。
 
 告诉运营方怎么改，不要说你改好了。
 
