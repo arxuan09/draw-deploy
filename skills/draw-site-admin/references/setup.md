@@ -136,7 +136,7 @@ draw_admin.py settings set prompt_review_enabled=true prompt_review_model_id=<�
 同机或内网的反代和 Cloudflare 不用配置，服务端自动识别。体检报警时按提示处理，都要运营方改部署：
 
 - 拿到的仍是内网地址：反代没传用户地址，Nginx 要有 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`（Caddy 默认就传）；或者 `TRUSTED_PROXIES` 填了却没包含这个反代，把它清空或补上。
-- 来自不在名单里的公网地址：反代或 CDN 在另一台公网机器上，在部署目录 `.env` 里加 `TRUSTED_PROXIES=<它的地址或网段>`，然后重启。
+- 来自不在名单里的公网地址，或识别出的 IP 其实是自己的反代 / CDN 节点：在部署目录 `.env` 里加 `TRUSTED_PROXIES=<它的地址或网段>`（只填公网反代，内网和 Cloudflare 会自动信任），然后重启。
 
 告诉运营方怎么改，不要说你改好了。
 
