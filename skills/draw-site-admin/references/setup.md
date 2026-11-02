@@ -66,7 +66,7 @@ draw_admin.py packages list --json
 draw_admin.py call packages/create --data '{"name":"入门包","credits":500,"priceCents":990,"validityDays":365,"kind":"credits","enabled":true,"sortOrder":1,"features":["约 50 张高清图"]}'
 ```
 
-订阅类另需 `subscriptionPeriodDays`、`subscriptionTotalPeriods`、`subscriptionCreditsPerPeriod`；Stripe / Waffo 自动续费再加 `billingInterval`（`month` / `year`）。先读一个现有订阅套餐的 JSON 照着写。改价用 `packages/update`（带 `id`），下架用 `packages/toggle`。
+订阅类（`kind: subscription`）必填 `billingInterval`（`month` 月付 / `quarter` 季付 / `year` 年付）和 `subscriptionCreditsPerPeriod`（每期积分），一直续到用户取消；季付、年付的积分按月分次发放。先读一个现有订阅套餐的 JSON 照着写。改价用 `packages/update`（带 `id`），下架用 `packages/toggle`。
 
 ## payment 支付通道
 
