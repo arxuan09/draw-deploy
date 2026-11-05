@@ -5,6 +5,7 @@
 **已收录：**
 
 - [gpt-image-2（OpenAI）](#gpt-image-2)
+- [GPT Image 2.6（OpenAI，`gpt-image-2.6-flare` / `gpt-image-2.6-sunburst`）](#gpt-image-26)
 - [GPT Image 2.5（OpenAI，`gpt-image-2.5-flare` / `gpt-image-2.5-sunburst`）](#gpt-image-25)
 - [Gemini Nano Banana 系列](#gemini-nano-banana-系列)（`gemini-nano-banana-2.1` / `gemini-3.1-flash-image` / `gemini-3-pro-image` / `gemini-3.1-flash-lite-image`；`gemini-2.5-flash-image` 2026-10-02 停服）
 - [通义万相 Wan 系列（DashScope）](#通义万相-wan-系列dashscope)（`wan2.7-image-pro` / `wan2.7-image`，**异步端点**）
@@ -146,7 +147,7 @@
 | 尺寸 | 与 gpt-image-2 完全相同（任意 `宽x高`，约束见上一节），配置方式也相同 |
 | 透明背景 | 支持：`background: "transparent"` + PNG / WebP 输出 |
 
-**后台配置**：新增模型时选 `OpenAI /v1/images/generations` 端点，点表单「计费 / 档位积分」里的「从预设填充 → GPT Image 2.5 Flare / Sunburst」，会填好模型 Key、六档质量和「允许扩图」「允许自定义分辨率」「透明背景」三个开关；尺寸和价格不动。新加的「超高」「极致」两档积分留空，按基础积分扣，按上游单价改即可。中转站的模型名可能不同，以中转站为准改「模型 Key」。
+**后台配置**：新增模型时选 `OpenAI /v1/images/generations` 端点，点表单「计费 / 档位积分」里的「从预设填充 → GPT Image 2.5 Flare / Sunburst」，会填好模型 Key、六档质量和「允许扩图」「允许自定义分辨率」「透明背景」三个开关（接官方端点时还会打开「标注叠加层」，见 GPT Image 2.6 一节）；尺寸和价格不动。新加的「超高」「极致」两档积分留空，按基础积分扣，按上游单价改即可。中转站的模型名可能不同，以中转站为准改「模型 Key」。
 
 **透明背景开了之后用户能做什么**：
 
@@ -155,6 +156,25 @@
 - Agent 做贴纸、图标、商品抠图这类素材时会自己选支持透明背景的模型。
 
 **已知现象**（社区反馈 + 2026-10-10 中转站实测，系统不做处理）：不透明区域 alpha 最高 254；要求投影时投影常变成白色光晕；拿透明 PNG 当参考图再要透明底，背景会出脏。
+
+---
+
+## GPT Image 2.6
+
+来源：OpenAI 公开 API 规范（2026-11-05 查阅），2026-11-04 发布。请求方式与 2.5 相同，多了两个参数。
+
+| 项目 | 内容 |
+|---|---|
+| 模型 | `gpt-image-2.6-flare`（速度优先）、`gpt-image-2.6-sunburst`（细节与改图一致性优先） |
+| 质量 / 尺寸 | 按 2.5 配（六档质量、任意 `宽x高`）。官方目前只给 2.5 写明了 `xhigh` / `max` 和任意尺寸，2.6 是推断，上游报错就删掉对应质量行或关掉「自定义分辨率」 |
+| 思考强度 | 官方叫 `complexity`：出图前花多少算力规划画面，和画质档位无关。快速 / 均衡 / 深入三档，官方默认深入；深入更慢，改图时可能多改。画布上的放大、扩图、去背景、全能编辑会自动用快速 |
+| 标注叠加层 | 官方叫 `markup`：全能编辑把标注作为透明图层单独发给模型，不再画进原图，结果里更不容易残留标注。2.5 也支持 |
+| 透明背景 | 官方**没写明** 2.6 支持，预设不开；确认支持后再在模型上打开 |
+
+**后台配置**：「从预设填充 → GPT Image 2.6 Flare / Sunburst」会填好模型 Key、六档质量、「允许扩图」「允许自定义分辨率」、思考强度三档（默认深入）和「标注叠加层」。
+
+- **接官方 OpenAI / Azure**：端点选 `OpenAI /v1/images/generations(不带 response_format)`，「标注叠加层」只在这个端点出现。
+- **接中转站**：端点选标准的 `OpenAI /v1/images/generations`，没有「标注叠加层」（中转可能丢掉这个字段，改图照扣费但标注没了），全能编辑照旧把标注画进图里。中转站不认 `complexity` 时，把思考强度的勾全去掉即可。
 
 ---
 
