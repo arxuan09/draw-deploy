@@ -87,7 +87,8 @@ type ImageRequest struct {
 		DataURL string `json:"dataUrl"`
 	} `json:"mask"`
 	Layers *struct {
-		Count int `json:"count"`
+		Count           int  `json:"count"`
+		TextRecognition bool `json:"textRecognition"`
 	} `json:"layers"`
 	Params map[string]any `json:"params"`
 }
@@ -98,6 +99,27 @@ type LayerInfo struct {
 	BBoxPx      []int  `json:"bboxPx,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Text：文字图层的识别结果（声明了 layersText 且请求要了才给）。
+	Text *LayerText `json:"text,omitempty"`
+}
+
+type LayerText struct {
+	Text  string `json:"text"`
+	Lines []struct {
+		BBox   []int `json:"bbox,omitempty"`
+		BBoxPx []int `json:"bboxPx,omitempty"`
+		Runs   []struct {
+			Text          string `json:"text"`
+			Font          string `json:"font,omitempty"`
+			Color         string `json:"color,omitempty"`
+			Bold          bool   `json:"bold,omitempty"`
+			Italic        bool   `json:"italic,omitempty"`
+			Underline     bool   `json:"underline,omitempty"`
+			Strikethrough bool   `json:"strikethrough,omitempty"`
+			Shadow        bool   `json:"shadow,omitempty"`
+			Translucent   bool   `json:"translucent,omitempty"`
+		} `json:"runs"`
+	} `json:"lines"`
 }
 
 type ImageResult struct {

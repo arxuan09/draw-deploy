@@ -105,6 +105,8 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 | `inpaint` | bool | 支持局部重绘（需要参考图） |
 | `outpaint` | bool | 支持扩图（需要参考图，且必须同时 `customSize: true`：扩图按任意像素尺寸下发） |
 | `layers` | bool | 支持图层拆分（需要参考图） |
+| `layersMax` | int | 可选，一次拆分最多输出几张（含底图），2～100；缺省是 17。需要同时声明 `layers` |
+| `layersText` | bool | 可选，文字图层能带识别出的文字（见下文 `layer.text`）。需要同时声明 `layers` |
 | `customSize` | bool | 接受任意像素尺寸（只适用于 `openai` 模板） |
 | `transparentBackground` | bool | 可选，支持透明背景输出。声明后后台才能打开该模型的「透明背景」开关，用户打开时请求里 `background` 为 `"transparent"`、`outputFormat` 为 `"png"`，返回的图片必须带透明通道 |
 | `promptMaxChars` | int | 可选，提示词字符上限，超了在扣费前拦下 |
@@ -197,7 +199,7 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 | `background` | 可选，`auto` / `transparent` / `opaque`。只有声明了 `transparentBackground` 的模型才会收到 `transparent` |
 | `references` | 参考图，按用户给的顺序。没有时是 `[]` |
 | `mask` | 仅 `inpaint`：`{"dataUrl": "data:image/png;base64,…"}`，红色区域是要重画的部分，尺寸与 `references[0]` 相同 |
-| `layers` | 仅 `layers`：`{"count": 6}`，总层数（含底图）2～17；`0` 表示由上游决定 |
+| `layers` | 仅 `layers`：`{"count": 6, "textRecognition": true}`。`count` 是总层数（含底图），2～`layersMax`，`0` 表示由上游决定，但多出后台上限（不超过 `layersMax`）的输出会被丢弃且不计费；`textRecognition` 只在声明了 `layersText` 且后台开了文字识别时为 `true` |
 | `params` | 后台模型的「默认参数」JSON，原样放在这里 |
 
 `intent`：
@@ -230,6 +232,19 @@ Draw Studio 与**协议转换器**之间的接口规范。转换器是运营方�
 - `usage` 可选，原样存进任务记录供对账，**不参与计费**。
 - 宽高以 Draw Studio 读到的实际文件为准，不用回报。
 - 图层拆分：每张带 `layer`：`{"zIndex": 0, "bbox": [l, t, r, b], "bboxPx": [l, t, r, b], "name": "背景", "description": "…"}`。`zIndex` 0 是底图；`bbox` 是相对底图的千分比（0～1000），`bboxPx` 是底图像素坐标，至少给一个。
+- 文字识别（请求里 `layers.textRecognition` 为 `true` 时）：印刷体文字图层的 `layer` 再带 `text`，认不出的层不带：
+
+  ```json
+  "text": {
+    "text": "夏日特惠\n全场五折",
+    "lines": [
+      { "bbox": [120, 80, 520, 160], "bboxPx": [246, 164, 1065, 328],
+        "runs": [ { "text": "夏日特惠", "font": "思源黑体", "color": "#FF3300", "bold": true } ] }
+    ]
+  }
+  ```
+
+  `text` 是整层文字，行间用 `\n`；`lines` 每项一行，框的坐标系和图层的 `bbox` / `bboxPx` 相同（底图坐标）；`runs` 是一行里样式相同的一段，`font` 是最接近的字体名（不知道就不填），`color` 是 `#RRGGBB`，另有可选布尔 `bold` / `italic` / `underline` / `strikethrough` / `shadow` / `translucent`。
 
 **异步**（HTTP 202）：
 
